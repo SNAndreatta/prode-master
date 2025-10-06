@@ -1,4 +1,4 @@
-# Prode Master (TP4 - Desarrollo de Sistemas)
+# Prode Master
 ## Integrantes
 - Galo Fernandez Achille
 - Santino Andreatta
