@@ -1,8 +1,6 @@
 # Prode Master
 ## Integrantes
-- Galo Fernandez Achille
-- Santino Andreatta
-- Pedro Villarino
+
 
 ## Stack
 - Node.js
