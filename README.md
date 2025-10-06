@@ -5,5 +5,3 @@
 - Pedro Villarino
 
 ## Ejecución del servidor backend
-
-## Ejecución del cliente web
