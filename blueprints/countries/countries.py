@@ -7,9 +7,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from database import get_db  
 from core.api_connection.connection import apiFutbolServicio
 from services.country.country_postgres import CountryPostgres
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 logger = logging.getLogger("countries_logger")
 logger.setLevel(logging.INFO)
+
+api_endpoint = os.getenv("API_ENDPOINT")
 
 handler = logging.StreamHandler()
 formatter = logging.Formatter(
@@ -22,7 +28,7 @@ countries_router = APIRouter()
 
 @countries_router.get("/api/countries")
 async def get_countries(db: AsyncSession = Depends(get_db)):
-    apiFutbol = apiFutbolServicio(endpoint="https://api-football-v1.p.rapidapi.com/v3")
+    apiFutbol = apiFutbolServicio(endpoint=api_endpoint)
     country_postgres = CountryPostgres()
 
     logger.info("Fetching countries from external API...")
@@ -39,29 +45,35 @@ async def get_countries(db: AsyncSession = Depends(get_db)):
 
     added_count = 0
     failed_count = 0
+    failed_countries = []  # Lista para registrar países que fallan
 
     for country in respuesta:
         try:
-            name = country.get("name")
-            code = country.get("code")
-            flag = country.get("flag")
+            name = country.get("name", "Unknown")
+            code = country.get("code", name[:3].upper())
+            flag = country.get("flag", "https://example.com/default-flag.png")
 
-            logger.info(f"Adding country: {name} ({code})")
-            await country_postgres.add_country(db, name, code, flag)
+            logger.info(f"Adding or updating country: {name} ({code})")
+            await country_postgres.add_or_skip_country(db, name, code, flag)
             added_count += 1
         except Exception as ex:
             failed_count += 1
+            failed_countries.append(country) 
             logger.exception(f"Error adding country {name}: {ex}")
 
     logger.info(
         f"Countries process completed: added={added_count}, failed={failed_count}"
     )
 
+    if failed_countries:
+        logger.warning(f"Failed countries: {failed_countries}")
+
     return JSONResponse(
         content={
             "status": "success",
             "countries_added": added_count,
             "countries_failed": failed_count,
+            "failed_countries": failed_countries,
         },
         status_code=status.HTTP_202_ACCEPTED,
     )

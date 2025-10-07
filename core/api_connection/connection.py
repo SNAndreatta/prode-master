@@ -12,8 +12,8 @@ class apiFutbolServicio():
         self.__url = ""
         self.__querystring = {}
         self.__headers = {
-            'x-rapidapi-host': "v3.football.api-sports.io",
-            "x-rapidapy-key": secret_key,
+            'x-rapidapi-host': "api-football-v1.p.rapidapi.com",
+            "x-rapidapi-key": secret_key,
             "Accept": "application/json"
         }
 
@@ -62,7 +62,7 @@ class apiFutbolServicio():
         print(f"El prompt: {self.endpoint}/countries")
         return self.Respuesta
    
-    def EquiposEstadios(self, competencia):
+    def Equipos(self, competencia):
         self.__set_url(f"{self.endpoint}/teams")
         self.__set_querystring('league', str(competencia))
         self.__set_querystring('season', "2024")
@@ -81,37 +81,5 @@ class apiFutbolServicio():
         if inicio != None and fin != None:
             self.__set_querystring('from', str(inicio))
             self.__set_querystring('to', str(fin))
-
-        return self.Respuesta
-   
-    def Bookmakers(self):
-        self.__set_url(f"{self.endpoint}/bookmakers")
-        return self.Respuesta
-   
-    def Apuestas(self, liga, page):
-        self.__set_url(f"{self.endpoint}/odds")
-
-        self.__set_querystring('league', str(liga))
-        self.__set_querystring('page', page)
-        self.__set_querystring('season', "2024")
-        self.__set_querystring('bookmaker', 26)
-
-        return self.Respuesta
-   
-    def Jugadores(self, equipo):
-        self.__set_url(f"{self.endpoint}/players/squads")
-        self.__set_querystring('team', equipo)
-        return self.Respuesta
-   
-    def tipoApuestas(self):
-        self.__set_url(f"{self.endpoint}/odds/bets")
-        return self.Respuesta
-   
-    def equipoEstadisticas(self, equipo):
-        self.__set_url(f"{self.endpoint}/teams/statistics")
-
-        self.__set_querystring('league', 128)
-        self.__set_querystring('season', 2024)
-        self.__set_querystring('team', equipo)
 
         return self.Respuesta

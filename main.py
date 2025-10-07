@@ -3,6 +3,8 @@ import sys
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from blueprints.countries.countries import countries_router
+from database import engine, Base
+from contextlib import asynccontextmanager
 
 logging.basicConfig(
     stream=sys.stdout,
@@ -10,11 +12,19 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 
-app = FastAPI()
-
 origins = [
     "http://localhost:5173",  
 ]
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+        print("Tablas creadas exitosamente.")
+    yield
+    print("Aplicación cerrada.")
+
+app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

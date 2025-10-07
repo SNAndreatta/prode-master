@@ -19,12 +19,14 @@ class Country(Base):
     id = Column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, nullable=False
     )
-    name = Column(String(100), nullable=False, unique=True)
-    code = Column(String(10), nullable=False, unique=True)
+    name = Column(String(100), nullable=True, unique=True)
+    code = Column(String(10), nullable=True, unique=True)
     flag = Column(Text, nullable=True)
 
-    # Example: relationship with City or User, if applicable
-    # cities = relationship("City", back_populates="country")
+    def __init__(self, name: str, code: str, flag: str = None):
+        self.name = name
+        self.code = code
+        self.flag = flag
 
     def __repr__(self):
         return f"<Country {self.name} ({self.code})>"
