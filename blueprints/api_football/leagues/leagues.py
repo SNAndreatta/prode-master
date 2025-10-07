@@ -12,7 +12,7 @@ import os
 
 load_dotenv()
 
-logger = logging.getLogger("leagues_logger")
+logger = logging.getLogger("leagues_AF_logger")
 logger.setLevel(logging.INFO)
 
 api_endpoint = os.getenv("API_ENDPOINT")
@@ -24,9 +24,9 @@ formatter = logging.Formatter(
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
-leagues_router = APIRouter()
+leagues_router_AF = APIRouter()
 
-@leagues_router.get("/api/leagues")
+@leagues_router_AF.get("/api/leagues")
 async def get_leagues(db: AsyncSession = Depends(get_db)):
     apiFutbol = apiFutbolServicio(endpoint=api_endpoint)
     league_postgres = LeaguePostgres()
@@ -114,7 +114,7 @@ async def get_leagues(db: AsyncSession = Depends(get_db)):
                 "leagues_failed": failed_count,
                 "failed_leagues": failed_leagues,
             },
-            status_code=status.HTTP_202_ACCEPTED,
+            status_code=status.HTTP_201_CREATED,
         )
     except Exception as e:
         logger.exception(f"Unexpected error: {e}")

@@ -36,3 +36,9 @@ class TeamPostgres:
         else:
             # Add a new team
             return await self.add_team(db, id, name, country_name, logo)
+
+    def teams_to_json(self, teams: list[Team]):
+        return [
+            {"id": t.id, "name": t.name, "country_name": t.country_name, "logo": t.logo}
+            for t in teams
+        ]

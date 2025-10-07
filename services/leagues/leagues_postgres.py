@@ -40,3 +40,15 @@ class LeaguePostgres:
     async def get_all_leagues(self, db: AsyncSession):
         result = await db.execute(select(League))
         return result.scalars().all()
+    
+    def leagues_to_json(self, leagues: list[League]):
+        return [
+            {"id": l.id, "name": l.name, "country_name": l.country_name, "logo": l.logo}
+            for l in leagues
+        ]
+    
+    async def get_leagues_by_country(self, db: AsyncSession, country_name: str):
+        result = await db.execute(
+            select(League).where(League.country_name == country_name)
+        )
+        return result.scalars().all()

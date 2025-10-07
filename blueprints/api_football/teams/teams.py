@@ -7,13 +7,13 @@ from database import get_db
 from core.api_connection.connection import apiFutbolServicio
 from services.teams.teams_postgres import TeamPostgres
 from services.country.country_postgres import CountryPostgres
-from services.leagues.leagues_postgres import LeaguePostgres  # Import LeaguePostgres
+from services.leagues.leagues_postgres import LeaguePostgres
 from dotenv import load_dotenv
 import os
 
 load_dotenv()
 
-logger = logging.getLogger("teams_logger")
+logger = logging.getLogger("teams_AF_logger")
 logger.setLevel(logging.INFO)
 
 api_endpoint = os.getenv("API_ENDPOINT")
@@ -25,19 +25,18 @@ formatter = logging.Formatter(
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
-teams_router = APIRouter()
+teams_router_AF = APIRouter()
 
-@teams_router.get("/api/teams")
+@teams_router_AF.get("/api/teams")
 async def get_teams(db: AsyncSession = Depends(get_db)):
     apiFutbol = apiFutbolServicio(endpoint=api_endpoint)
     team_postgres = TeamPostgres()
-    league_postgres = LeaguePostgres()  # Initialize LeaguePostgres
+    league_postgres = LeaguePostgres()
     country_postgres = CountryPostgres()
 
     logger.info("Fetching teams from external API...")
 
     try:
-        # Fetch all leagues from the database
         leagues = await league_postgres.get_all_leagues(db)
         logger.info(f"Retrieved {len(leagues)} leagues from the database.")
 
@@ -46,10 +45,9 @@ async def get_teams(db: AsyncSession = Depends(get_db)):
         failed_teams = []
 
         for league in leagues:
-            logger.info(f"Fetching teams for league: {league.name}")
+            logger.info(f"Fetching teams for league from external API: {league.name}")
 
             respuesta = None
-            # Intentar primero con temporada 2025
             try:
                 respuesta = apiFutbol.Equipos(liga=league.name, season=2025)
                 logger.info(f"Received {len(respuesta)} teams for {league.name} season 2025.")
@@ -71,7 +69,6 @@ async def get_teams(db: AsyncSession = Depends(get_db)):
                 logger.warning(f"Skipping league {league.name} because no teams were found for seasons 2025 or 2026.")
                 continue
 
-            # Aquí seguís con tu loop para agregar los equipos
             for item in respuesta:
                 try:
                     team_data = item.get("team", {})
@@ -82,7 +79,6 @@ async def get_teams(db: AsyncSession = Depends(get_db)):
                     team_logo = team_data.get("logo", "https://example.com/default-team-logo.png")
                     country_name = country_data.get("name", None)
 
-                    # Validación del país
                     if country_name:
                         country_result = await country_postgres.get_country_by_name(db, country_name)
                         if not country_result:
@@ -117,11 +113,8 @@ async def get_teams(db: AsyncSession = Depends(get_db)):
                 "teams_failed": failed_count,
                 "failed_teams": failed_teams,
             },
-            status_code=status.HTTP_202_ACCEPTED,
+            status_code=status.HTTP_201_CREATED,
         )
     except Exception as e:
         logger.exception(f"Unexpected error: {e}")
-        raise HTTPException(status_code=500, detail="Unexpected error fetching teams")
-    except Exception as e:
-        logger.exception(f"Unexpected error: {e}")
-        raise HTTPException(status_code=500, detail="Unexpected error fetching teams")
+        raise HTTPException(status_code=500, detail="Unexpected error fetching teams from external API")

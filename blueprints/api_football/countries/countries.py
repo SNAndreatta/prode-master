@@ -12,7 +12,7 @@ import os
 
 load_dotenv()
 
-logger = logging.getLogger("countries_logger")
+logger = logging.getLogger("countries_AF_logger")
 logger.setLevel(logging.INFO)
 
 api_endpoint = os.getenv("API_ENDPOINT")
@@ -24,9 +24,9 @@ formatter = logging.Formatter(
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
-countries_router = APIRouter()
+countries_router_AF = APIRouter()
 
-@countries_router.get("/api/countries")
+@countries_router_AF.get("/api/countries")
 async def get_countries(db: AsyncSession = Depends(get_db)):
     apiFutbol = apiFutbolServicio(endpoint=api_endpoint)
     country_postgres = CountryPostgres()
@@ -75,5 +75,5 @@ async def get_countries(db: AsyncSession = Depends(get_db)):
             "countries_failed": failed_count,
             "failed_countries": failed_countries,
         },
-        status_code=status.HTTP_202_ACCEPTED,
+        status_code=status.HTTP_201_CREATED,
     )
