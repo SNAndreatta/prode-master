@@ -1,9 +1,8 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from models.countries.countries import Country
-from services.country.country_interface import CountryService
 
-class CountryPostgres(CountryService):
+class CountryPostgres():
     
     async def add_country(self, db: AsyncSession, name: str, code: str, flag: str):
         country = Country(name=name, code=code, flag=flag)
@@ -37,3 +36,11 @@ class CountryPostgres(CountryService):
         else:
             # Add a new country
             return await self.add_country(db, name, code, flag)
+
+    async def get_all_countries(self, db: AsyncSession):
+        result = await db.execute(select(Country))
+        return result.scalars().all()
+
+    async def get_country_by_name(self, db: AsyncSession, name: str):
+        result = await db.execute(select(Country).where(Country.name == name))
+        return result.scalars().first()

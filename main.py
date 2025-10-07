@@ -5,6 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from blueprints.countries.countries import countries_router
 from database import engine, Base
 from contextlib import asynccontextmanager
+from blueprints.leagues.leagues import leagues_router
+from blueprints.teams.teams import teams_router
 
 logging.basicConfig(
     stream=sys.stdout,
@@ -35,3 +37,5 @@ app.add_middleware(
 )
 
 app.include_router(countries_router)
+app.include_router(leagues_router)
+app.include_router(teams_router)

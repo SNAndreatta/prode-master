@@ -62,16 +62,19 @@ class apiFutbolServicio():
         print(f"El prompt: {self.endpoint}/countries")
         return self.Respuesta
    
-    def Equipos(self, competencia):
-        self.__set_url(f"{self.endpoint}/teams")
-        self.__set_querystring('league', str(competencia))
-        self.__set_querystring('season', "2024")
-
-        return self.Respuesta
-       
-    def Competiciones(self, pais):
-        self.__set_url(f"{self.endpoint}/leagues")
+    def Competiciones(self, pais, current = True):
         self.__set_querystring('country', str(pais))
+        if current:
+            self.__set_url(f"{self.endpoint}/leagues?current=true")
+        else:
+            self.__set_url(f"{self.endpoint}/leagues")
+        return self.Respuesta
+
+    def Equipos(self, liga, season):
+        self.__set_url(f"{self.endpoint}/teams")
+        self.__set_querystring('league', liga)
+        self.__set_querystring('season', season)
+
         return self.Respuesta
 
     def Fixtures(self, liga, inicio = None, fin = None):
