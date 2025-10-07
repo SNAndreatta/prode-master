@@ -12,3 +12,5 @@
 - API-Football
 
 ## Ejecución del servidor backend
+
+python -m venv env

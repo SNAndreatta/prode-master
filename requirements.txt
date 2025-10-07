@@ -1,0 +1,17 @@
+fastapi
+uvicorn
+gunicorn
+sqlalchemy
+python-dotenv
+psycopg2-binary
+fastapi[standard]
+pyjwt
+datetime
+quixstreams
+werkzeug
+asyncpg
+motor
+minio
+pylint
+autopep8
+black
