@@ -3,7 +3,7 @@ import requests
 from fastapi import APIRouter, HTTPException, status, Depends
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from database import get_db  
+from database import get_db
 from core.api_connection.connection import apiFutbolServicio
 from services.leagues.leagues_postgres import LeaguePostgres
 from services.country.country_postgres import CountryPostgres
@@ -26,6 +26,7 @@ logger.addHandler(handler)
 
 leagues_router_AF = APIRouter()
 
+
 @leagues_router_AF.get("/api/leagues")
 async def get_leagues(db: AsyncSession = Depends(get_db)):
     apiFutbol = apiFutbolServicio(endpoint=api_endpoint)
@@ -38,8 +39,6 @@ async def get_leagues(db: AsyncSession = Depends(get_db)):
         country_names = ["Argentina", "Brasil", "World", "Spain", "England", "Italy"]
         logger.info(f"Fetching countries by names: {country_names}")
 
-        # Fetch countries by name
-        country_postgres = CountryPostgres()
         countries = []
         for name in country_names:
             result = await country_postgres.get_country_by_name(db, name)
@@ -53,6 +52,8 @@ async def get_leagues(db: AsyncSession = Depends(get_db)):
         added_count = 0
         failed_count = 0
         failed_leagues = []
+
+        leagues_ids = [2, 3, 11, 13, 15, 34, 39, 128, 129, 130, 131, 132, 134, 135, 140, 848, 906, 1067]
 
         for country in countries:
             country_name = country.name
@@ -70,21 +71,14 @@ async def get_leagues(db: AsyncSession = Depends(get_db)):
 
             for item in respuesta:
                 try:
+                    league_info = item.get("league", {})
+                    country_info = item.get("country", {})
                     seasons = item.get("seasons", [])
-                    valid_seasons = [season for season in seasons if season.get("year") in {2025, 2026}]
-                    if not valid_seasons:
-                        logger.info(f"Skipping league due to no valid seasons. League: {item.get('league', {}).get('name', 'Unknown')}, Seasons: {seasons}")
-                        continue
-                    else:
-                        logger.info(f"Valid seasons: {valid_seasons}")
 
-                    league_data = item.get("league", {})
-                    country_data = item.get("country", {})
-
-                    league_id = league_data.get("id")
-                    league_name = league_data.get("name", "Unknown League")
-                    league_logo = league_data.get("logo", "https://example.com/default-league-logo.png")
-                    country_name = country_data.get("name", "Unknown Country")
+                    league_id = league_info.get("id")
+                    league_name = league_info.get("name", "Unknown League")
+                    league_logo = league_info.get("logo", "https://example.com/default-league-logo.png")
+                    country_name = country_info.get("name", "Unknown Country")
 
                     if not league_id or not league_name or not country_name:
                         logger.warning(f"Skipping league with invalid data: {item}")
@@ -92,17 +86,46 @@ async def get_leagues(db: AsyncSession = Depends(get_db)):
                         failed_leagues.append(item)
                         continue
 
-                    logger.info(f"Adding or updating league: {league_name} (ID: {league_id})")
-                    await league_postgres.add_or_update_league(db, league_id, league_name, country_name, league_logo)
-                    added_count += 1
+                    if league_id not in leagues_ids:
+                        logger.info(
+                            f"Skipping league ID {league_id} ({league_name}) — not in allowed list."
+                        )
+                        continue
+
+                    valid_seasons = [
+                        s for s in seasons if s.get("year") in {2025, 2026}
+                    ]
+
+                    if not valid_seasons:
+                        logger.info(
+                            f"Skipping league {league_name} (ID: {league_id}) — no valid seasons (2025 or 2026)."
+                        )
+                        continue
+
+                    for season in valid_seasons:
+                        season_year = season.get("year")
+
+                        logger.info(
+                            f"Adding or updating league: {league_name} (ID: {league_id}) for season {season_year}"
+                        )
+
+                        await league_postgres.add_or_update_league(
+                            db,
+                            league_id,
+                            league_name,
+                            country_name,
+                            season_year,
+                            league_logo
+                        )
+
+                        added_count += 1
+
                 except Exception as ex:
                     failed_count += 1
                     failed_leagues.append(item)
                     logger.exception(f"Error adding league {league_name}: {ex}")
 
-        logger.info(
-            f"Leagues process completed: added={added_count}, failed={failed_count}"
-        )
+        logger.info(f"Leagues process completed: added={added_count}, failed={failed_count}")
 
         if failed_leagues:
             logger.warning(f"Failed leagues: {failed_leagues}")
@@ -116,6 +139,7 @@ async def get_leagues(db: AsyncSession = Depends(get_db)):
             },
             status_code=status.HTTP_201_CREATED,
         )
+
     except Exception as e:
         logger.exception(f"Unexpected error: {e}")
         raise HTTPException(status_code=500, detail="Unexpected error fetching leagues")

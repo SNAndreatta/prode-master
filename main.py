@@ -10,6 +10,7 @@ from blueprints.api_football.teams.teams import teams_router_AF
 from blueprints.api.countries.countries import countries_router
 from blueprints.api.leagues.leagues import leagues_router
 # from blueprints.api.teams.router import teams_router
+from core.api_connection.connection import apiFutbolServicio
 
 logging.basicConfig(
     stream=sys.stdout,

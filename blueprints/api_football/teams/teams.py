@@ -27,6 +27,7 @@ logger.addHandler(handler)
 
 teams_router_AF = APIRouter()
 
+
 @teams_router_AF.get("/api/teams")
 async def get_teams(db: AsyncSession = Depends(get_db)):
     apiFutbol = apiFutbolServicio(endpoint=api_endpoint)
@@ -38,6 +39,9 @@ async def get_teams(db: AsyncSession = Depends(get_db)):
 
     try:
         leagues = await league_postgres.get_all_leagues(db)
+        if not leagues:
+            raise HTTPException(status_code=404, detail="No leagues found in database")
+
         logger.info(f"Retrieved {len(leagues)} leagues from the database.")
 
         added_count = 0
@@ -45,66 +49,66 @@ async def get_teams(db: AsyncSession = Depends(get_db)):
         failed_teams = []
 
         for league in leagues:
-            logger.info(f"Fetching teams for league from external API: {league.name}")
-
-            respuesta = None
             try:
-                respuesta = apiFutbol.Equipos(liga=league.name, season=2025)
-                logger.info(f"Received {len(respuesta)} teams for {league.name} season 2025.")
-            except requests.HTTPError as e:
-                logger.warning(f"No data for {league.name} season 2025: {e}")
-            except Exception as e:
-                logger.warning(f"Unexpected error for {league.name} season 2025: {e}")
+                logger.info(f"Fetching teams for league: {league.name}")
 
-            if not respuesta:
+                respuesta = None
+                season = league.season
                 try:
-                    respuesta = apiFutbol.Equipos(liga=league.name, season=2026)
-                    logger.info(f"Received {len(respuesta)} teams for {league.name} season 2026.")
+                    respuesta = apiFutbol.Equipos(liga=league.id, season=season)
+                    if respuesta:
+                        logger.info(
+                            f"Received {len(respuesta)} teams for {league.name} season {season}."
+                        )
+                except requests.exceptions.Timeout:
+                    logger.warning(f"Timeout fetching teams for {league.name} season {season}. Retrying next season...")
+                except requests.exceptions.ConnectionError:
+                    logger.warning(f"Connection error fetching {league.name} season {season}. Skipping league.")
+                    break
                 except requests.HTTPError as e:
-                    logger.warning(f"No data for {league.name} season 2026: {e}")
+                    logger.warning(f"HTTP error fetching {league.name} season {season}: {e}")
                 except Exception as e:
-                    logger.warning(f"Unexpected error for {league.name} season 2026: {e}")
+                    logger.warning(f"Unexpected error fetching {league.name} season {season}: {e}")
 
-            if not respuesta:
-                logger.warning(f"Skipping league {league.name} because no teams were found for seasons 2025 or 2026.")
-                continue
+                if not respuesta:
+                    logger.warning(f"No teams found for {league.name} (seasons 2025/2026). Skipping.")
+                    continue
 
-            for item in respuesta:
-                try:
-                    team_data = item.get("team", {})
-                    country_data = item.get("country", {})
+                for item in respuesta:
+                    try:
+                        team_data = item.get("team", {})
 
-                    team_id = team_data.get("id")
-                    team_name = team_data.get("name", "Unknown Team")
-                    team_logo = team_data.get("logo", "https://example.com/default-team-logo.png")
-                    country_name = country_data.get("name", None)
+                        team_id = team_data.get("id")
+                        team_name = team_data.get("name", "Unknown")
+                        team_logo = team_data.get("logo", "https://example.com/default-team-logo.png")
+                        country_name = team_data.get("country", "Uknown")
 
-                    if country_name:
-                        country_result = await country_postgres.get_country_by_name(db, country_name)
-                        if not country_result:
-                            logger.warning(f"Country '{country_name}' not found in DB. Setting country_name to None.")
-                            country_name = None
+                        if not team_id or not team_name:
+                            logger.warning(f"Invalid team data: {item}")
+                            failed_count += 1
+                            failed_teams.append(item)
+                            continue
 
-                    if not team_id or not team_name:
-                        logger.warning(f"Skipping team with invalid data: {item}")
+                        if country_name:
+                            country_result = await country_postgres.get_country_by_name(db, country_name)
+                            if not country_result:
+                                logger.warning(f"Country '{country_name}' not found. Setting to None.")
+                                country_name = None
+
+                        await team_postgres.add_or_update_team(db, team_id, team_name, country_name, team_logo)
+                        logger.info(f"Added or updated team: {team_name} (ID: {team_id})")
+                        added_count += 1
+
+                    except Exception as ex:
                         failed_count += 1
                         failed_teams.append(item)
-                        continue
+                        logger.exception(f"Error adding team {team_name}: {ex}")
 
-                    logger.info(f"Adding or updating team: {team_name} (ID: {team_id})")
-                    await team_postgres.add_or_update_team(db, team_id, team_name, country_name, team_logo)
-                    added_count += 1
-                except Exception as ex:
-                    failed_count += 1
-                    failed_teams.append(item)
-                    logger.exception(f"Error adding team {team_name}: {ex}")
+            except Exception as league_error:
+                logger.exception(f"Unexpected error processing league {league.name}: {league_error}")
+                continue
 
-        logger.info(
-            f"Teams process completed: added={added_count}, failed={failed_count}"
-        )
-
-        if failed_teams:
-            logger.warning(f"Failed teams: {failed_teams}")
+        logger.info(f"Teams process completed: added={added_count}, failed={failed_count}")
 
         return JSONResponse(
             content={
@@ -115,6 +119,14 @@ async def get_teams(db: AsyncSession = Depends(get_db)):
             },
             status_code=status.HTTP_201_CREATED,
         )
+
+    except HTTPException as e:
+        raise e
+
+    except requests.exceptions.RequestException as e:
+        logger.exception(f"External API request failed: {e}")
+        raise HTTPException(status_code=502, detail="Failed to fetch data from external API")
+
     except Exception as e:
-        logger.exception(f"Unexpected error: {e}")
-        raise HTTPException(status_code=500, detail="Unexpected error fetching teams from external API")
+        logger.exception(f"Unexpected server error: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error while fetching teams")

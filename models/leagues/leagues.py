@@ -18,12 +18,14 @@ class League(Base):
     name = Column(String(100), nullable=True, unique=False)
     country_name = Column(String(100), ForeignKey("countries.name"), nullable=False)
     logo = Column(Text, nullable=True)
+    season = Column(Integer, nullable=False)
 
-    def __init__(self, id: int, name: str, country_name: str, logo: str = None):
+    def __init__(self, id: int, name: str, country_name: str, season: int, logo: str = None):
         self.id = id
         self.name = name
         self.country_name = country_name
         self.logo = logo
+        self.season = season
 
     def __repr__(self):
-        return f"<League {self.name} (from: {self.country_name} // id: {self.id})>"
+        return f"<League {self.name} year {self.season} (from: {self.country_name} // id: {self.id})>"

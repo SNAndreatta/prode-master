@@ -58,11 +58,13 @@ class apiFutbolServicio():
             },
             ]
         """
+        self.__querystring = {}
         self.__set_url(f"{self.endpoint}/countries")
         print(f"El prompt: {self.endpoint}/countries")
         return self.Respuesta
    
     def Competiciones(self, pais, current = True):
+        self.__querystring = {}
         self.__set_querystring('country', str(pais))
         if current:
             self.__set_url(f"{self.endpoint}/leagues?current=true")
@@ -70,14 +72,26 @@ class apiFutbolServicio():
             self.__set_url(f"{self.endpoint}/leagues")
         return self.Respuesta
 
-    def Equipos(self, liga, season):
+    def Equipos(self, liga: int, season: int) -> list[dict]:
+        """
+        Devuelve todos los equipos de una liga y temporada específica.
+        Ejemplo: GET /teams?league=39&season=2019
+        """
+        self.__querystring = {}
+
+        if not liga or not season:
+            raise ValueError("Se requieren 'liga' y 'season' para obtener los equipos.")
+
         self.__set_url(f"{self.endpoint}/teams")
         self.__set_querystring('league', liga)
-        self.__set_querystring('season', season)
+        self.__set_querystring('season', str(season))
+
+        print(f"query: {self.querystring}\nheaders: {self.headers}\nurl: {self.url}")
 
         return self.Respuesta
 
     def Fixtures(self, liga, inicio = None, fin = None):
+        self.__querystring = {}
         self.__set_url(f"{self.endpoint}/fixtures")
         self.__set_querystring('league', str(liga))
         self.__set_querystring('season', "2024")
