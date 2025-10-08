@@ -73,6 +73,15 @@ class LeaguePostgres:
         result = await db.execute(select(League))
         return result.scalars().all()
 
+    def league_to_json(self, league: League):
+        return {
+            "id": league.id,
+            "name": league.name,
+            "country_name": league.country_name,
+            "logo": league.logo,
+            "season": league.season,
+        }
+
     def leagues_to_json(self, leagues: list[League]):
         return [
             {
