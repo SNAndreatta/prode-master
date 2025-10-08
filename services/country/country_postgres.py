@@ -49,16 +49,9 @@ class CountryPostgres():
             if country and country not in countries:
                 countries.append(country)
         return countries
-    
-    def country_to_json(self, country: Country):
-        return {
-            "name": country.name,
-            "code": country.code,
-            "flag": country.flag,
-        }
 
     def countries_to_json(self, countries: list[Country]):
         return [
-            {"name": c.name, "code": c.code, "flag": c.flag}
-            for c in countries
+            country.to_json()
+            for country in countries
         ]

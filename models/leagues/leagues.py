@@ -27,5 +27,14 @@ class League(Base):
         self.logo = logo
         self.season = season
 
+    def to_json(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "country_name": self.country_name,
+            "logo": self.logo,
+            "season": self.season,
+        }
+
     def __repr__(self):
         return f"<League {self.name} year {self.season} (from: {self.country_name} // id: {self.id})>"

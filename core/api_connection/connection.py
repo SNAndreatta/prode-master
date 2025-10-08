@@ -42,7 +42,7 @@ class apiFutbolServicio():
         response = response.json()
         return response['response']
 
-    def Paises(self) -> list[dict[str, str,str]]:
+    def countries_from_api(self) -> list[dict[str, str,str]]:
         """
         Returns:
         [
@@ -52,8 +52,8 @@ class apiFutbolServicio():
             "flag": "https://media.api-sports.io/flags/gb.svg"
             },
             {
-            "name": "blud",
-            "code": "bl",
+            "name": "Blud",
+            "code": "BL",
             "flag": "https://media.api-sports.io/flags/bl.svg"
             },
             ]
@@ -63,7 +63,7 @@ class apiFutbolServicio():
         print(f"El prompt: {self.endpoint}/countries")
         return self.Respuesta
    
-    def Competiciones(self, pais, current = True):
+    def leagues_from_api(self, pais, current = True):
         self.__querystring = {}
         self.__set_querystring('country', str(pais))
         if current:
@@ -72,7 +72,7 @@ class apiFutbolServicio():
             self.__set_url(f"{self.endpoint}/leagues")
         return self.Respuesta
 
-    def Equipos(self, liga: int, season: int) -> list[dict]:
+    def teams_from_api(self, liga: int, season: int) -> list[dict]:
         """
         Devuelve todos los equipos de una liga y temporada específica.
         Ejemplo: GET /teams?league=39&season=2019

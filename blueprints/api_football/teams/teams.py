@@ -55,7 +55,7 @@ async def get_teams(db: AsyncSession = Depends(get_db)):
                 respuesta = None
                 season = league.season
                 try:
-                    respuesta = apiFutbol.Equipos(liga=league.id, season=season)
+                    respuesta = apiFutbol.teams_from_api(liga=league.id, season=season)
                     if respuesta:
                         logger.info(
                             f"Received {len(respuesta)} teams for {league.name} season {season}."

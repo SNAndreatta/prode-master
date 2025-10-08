@@ -60,7 +60,7 @@ async def get_leagues(db: AsyncSession = Depends(get_db)):
             logger.info(f"Fetching leagues for country: {country_name}")
 
             try:
-                respuesta = apiFutbol.Competiciones(pais=country_name)
+                respuesta = apiFutbol.leagues_from_api(pais=country_name)
                 logger.info(f"Received {len(respuesta)} leagues for country: {country_name}.")
             except requests.HTTPError as e:
                 logger.exception(f"HTTP error fetching leagues for {country_name}: {e}")

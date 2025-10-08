@@ -24,5 +24,13 @@ class Team(Base):
         self.logo = logo
         self.country_name = country_name
 
+    def to_json(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "logo": self.logo,
+            "country_name": self.country_name,
+        }
+
     def __repr__(self):
         return f"<Team {self.name} (from: {self.country_name} // id: {self.id})>"

@@ -28,5 +28,12 @@ class Country(Base):
         self.code = code
         self.flag = flag
 
+    def to_json(self):
+        return {
+            "name": self.name,
+            "code": self.code,
+            "flag": self.flag,
+        }
+
     def __repr__(self):
         return f"<Country {self.name} ({self.code})>"

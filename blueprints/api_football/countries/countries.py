@@ -34,7 +34,7 @@ async def get_countries(db: AsyncSession = Depends(get_db)):
     logger.info("Fetching countries from external API...")
 
     try:
-        respuesta = apiFutbol.Paises()
+        respuesta = apiFutbol.countries_from_api()
         logger.info(f"Received {len(respuesta)} countries from API.")
     except requests.HTTPError as e:
         logger.exception(f"HTTP error fetching countries: {e}")
