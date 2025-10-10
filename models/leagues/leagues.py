@@ -1,6 +1,6 @@
 from sqlalchemy import Column, String, Text, ForeignKey, Integer
 from database import Base
-
+from models.countries.countries import Country
 class League(Base):
     """League ORM class
 
@@ -27,11 +27,17 @@ class League(Base):
         self.logo = logo
         self.season = season
 
+    def __len__(self):
+        return 1
+
+    def __iter__(self):
+        return iter([self])
+
     def to_json(self):
         return {
             "id": self.id,
             "name": self.name,
-            "country_name": self.country_name,
+            "country": self.country_name,
             "logo": self.logo,
             "season": self.season,
         }

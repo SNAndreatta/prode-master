@@ -40,6 +40,9 @@ class apiFutbolServicio():
     def Respuesta(self):
         response = requests.get(self.url, headers=self.headers, params=self.querystring)
         response = response.json()
+
+        print(response)
+
         return response['response']
 
     def countries_from_api(self) -> list[dict[str, str,str]]:
@@ -90,13 +93,20 @@ class apiFutbolServicio():
 
         return self.Respuesta
 
-    def Fixtures(self, liga, inicio = None, fin = None):
+    def fixtures_from_api(self, liga: int, season: int) -> list[dict]:
         self.__querystring = {}
         self.__set_url(f"{self.endpoint}/fixtures")
         self.__set_querystring('league', str(liga))
-        self.__set_querystring('season', "2024")
-        if inicio != None and fin != None:
-            self.__set_querystring('from', str(inicio))
-            self.__set_querystring('to', str(fin))
+        self.__set_querystring('season', str(season))
+
+        self.__set_querystring('from', "2024-06-01")
+        self.__set_querystring('to', "2026-05-31")
+        self.__set_querystring('timezone', "America/Argentina/Buenos_Aires")
 
         return self.Respuesta
+
+    # def timezones_from_api(self) -> list[dict]:
+    #     self.__querystring = {}
+
+    #     self.__set_url(f"{self.endpoint}/timezone")
+    #     return self.Respuesta

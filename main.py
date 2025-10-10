@@ -2,15 +2,22 @@ import logging
 import sys
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from blueprints.api_football.countries.countries import countries_router_AF
 from database import engine, Base
 from contextlib import asynccontextmanager
+
+# FOOTBALL-API
+from blueprints.api_football.countries.countries import countries_router_AF
 from blueprints.api_football.leagues.leagues import leagues_router_AF
 from blueprints.api_football.teams.teams import teams_router_AF
+from blueprints.api_football.fixtures.fixtures import fixtures_router_AF
+
+# API
 from blueprints.api.countries.countries import countries_router
 from blueprints.api.leagues.leagues import leagues_router
-# from blueprints.api.teams.router import teams_router
+"""from blueprints.api.teams.router import teams_router"""
+
 from core.api_connection.connection import apiFutbolServicio
+import os
 
 logging.basicConfig(
     stream=sys.stdout,
@@ -21,6 +28,8 @@ logging.basicConfig(
 origins = [
     "http://localhost:5173",  
 ]
+
+api_endpoint = os.getenv("API_ENDPOINT")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -48,3 +57,4 @@ app.include_router(leagues_router)
 app.include_router(countries_router_AF)
 app.include_router(leagues_router_AF)
 app.include_router(teams_router_AF)
+app.include_router(fixtures_router_AF)

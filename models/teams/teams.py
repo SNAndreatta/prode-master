@@ -1,3 +1,4 @@
+
 from sqlalchemy import Column, String, Text, Integer, ForeignKey
 from database import Base
 
@@ -29,7 +30,7 @@ class Team(Base):
             "id": self.id,
             "name": self.name,
             "logo": self.logo,
-            "country_name": self.country_name,
+            "country": self.country_name
         }
 
     def __repr__(self):
