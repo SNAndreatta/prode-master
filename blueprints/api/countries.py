@@ -4,7 +4,7 @@ from fastapi import HTTPException, status, Depends, APIRouter
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from database import get_db  
-from services.country.country_postgres import CountryPostgres
+from services.country_postgres import CountryPostgres
 from dotenv import load_dotenv
 import os
 

@@ -4,12 +4,12 @@ from fastapi import APIRouter, HTTPException, status, Depends
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from database import get_db
-from core.api_connection.connection import apiFutbolServicio
-from services.fixtures.fixture_postgres import FixturePostgres
-from services.leagues.leagues_postgres import LeaguePostgres
+from core.api_connection import apiFutbolServicio
+from services.fixture_postgres import FixturePostgres
+from services.leagues_postgres import LeaguePostgres
 from dotenv import load_dotenv
 import os
-from models.fixture.fixture_status import string_to_enum
+from models.fixture_status import string_to_enum
 from datetime import datetime, timezone
 
 

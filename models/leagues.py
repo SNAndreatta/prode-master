@@ -1,6 +1,6 @@
 from sqlalchemy import Column, String, Text, ForeignKey, Integer
 from database import Base
-from models.countries.countries import Country
+from models.countries import Country
 class League(Base):
     """League ORM class
 

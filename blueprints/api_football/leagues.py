@@ -4,9 +4,9 @@ from fastapi import APIRouter, HTTPException, status, Depends
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from database import get_db
-from core.api_connection.connection import apiFutbolServicio
-from services.leagues.leagues_postgres import LeaguePostgres
-from services.country.country_postgres import CountryPostgres
+from core.api_connection import apiFutbolServicio
+from services.leagues_postgres import LeaguePostgres
+from services.country_postgres import CountryPostgres
 from dotenv import load_dotenv
 import os
 

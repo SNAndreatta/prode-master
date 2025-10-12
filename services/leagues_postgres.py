@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from models.leagues.leagues import League
+from models.leagues import League
 
 
 class LeaguePostgres:

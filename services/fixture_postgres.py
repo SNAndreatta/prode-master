@@ -1,7 +1,7 @@
-from models.fixture.fixture import Fixture
+from models.fixture import Fixture
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from models.fixture.fixture_status import FixtureStatus
+from models.fixture_status import FixtureStatus
 
 class FixturePostgres:
     async def add_or_update_fixture(

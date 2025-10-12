@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from models.teams.teams import Team
+from models.teams import Team
 
 class TeamPostgres:
     async def add_team(self, db: AsyncSession, id: int, name: str, country_name: str, logo: str = None):

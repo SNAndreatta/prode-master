@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from models.countries.countries import Country
-from services.leagues.leagues_postgres import LeaguePostgres
+from models.countries import Country
+from services.leagues_postgres import LeaguePostgres
 
 class CountryPostgres():
     

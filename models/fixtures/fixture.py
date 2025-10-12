@@ -1,6 +1,6 @@
 from sqlalchemy import Column, String, ForeignKey, Integer, DateTime, Enum
 from database import Base
-from models.fixture.fixture_status import FixtureStatus
+from models.fixtures.fixture_status import FixtureStatus
 
 class Fixture(Base):
     """Fixture ORM class

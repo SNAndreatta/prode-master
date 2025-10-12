@@ -105,6 +105,14 @@ class apiFutbolServicio():
 
         return self.Respuesta
 
+    def rounds_from_api(self, liga: int, season: int) -> list[dict]:
+        self.__querystring = {}
+        self.__set_url(f"{self.endpoint}/rounds")
+        self.__set_querystring('league', str(liga))
+        self.__set_querystring('season', str(season))
+        self.__set_querystring('current', True)
+        return self.Respuesta
+
     # def timezones_from_api(self) -> list[dict]:
     #     self.__querystring = {}
 

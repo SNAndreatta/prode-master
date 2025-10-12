@@ -6,17 +6,17 @@ from database import engine, Base
 from contextlib import asynccontextmanager
 
 # FOOTBALL-API
-from blueprints.api_football.countries.countries import countries_router_AF
-from blueprints.api_football.leagues.leagues import leagues_router_AF
-from blueprints.api_football.teams.teams import teams_router_AF
-from blueprints.api_football.fixtures.fixtures import fixtures_router_AF
+from blueprints.api_football.countries import countries_router_AF
+from blueprints.api_football.leagues import leagues_router_AF
+from blueprints.api_football.teams import teams_router_AF
+from blueprints.api_football.fixtures import fixtures_router_AF
 
 # API
-from blueprints.api.countries.countries import countries_router
-from blueprints.api.leagues.leagues import leagues_router
+from blueprints.api.countries import countries_router
+from blueprints.api.leagues import leagues_router
 """from blueprints.api.teams.router import teams_router"""
 
-from core.api_connection.connection import apiFutbolServicio
+from core.api_connection import apiFutbolServicio
 import os
 
 logging.basicConfig(
