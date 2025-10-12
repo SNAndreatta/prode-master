@@ -9,7 +9,7 @@ from services.fixture_postgres import FixturePostgres
 from services.leagues_postgres import LeaguePostgres
 from dotenv import load_dotenv
 import os
-from models.fixture_status import string_to_enum
+from models.fixtures.fixture_status import string_to_enum
 from datetime import datetime, timezone
 
 

@@ -1,7 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from models.countries import Country
-from services.leagues_postgres import LeaguePostgres
 
 class CountryPostgres():
     
@@ -39,16 +38,6 @@ class CountryPostgres():
     async def get_country_by_name(self, db: AsyncSession, name: str):
         result = await db.execute(select(Country).where(Country.name == name))
         return result.scalars().first()
-    
-    async def get_all_countries_with_league(self, db: AsyncSession):
-        league_service = LeaguePostgres()
-        leagues = await league_service.get_all_leagues(db)
-        countries = []
-        for league in leagues:
-            country = await self.get_country_by_name(db, league.country_name)
-            if country and country not in countries:
-                countries.append(country)
-        return countries
 
     def countries_to_json(self, countries: list[Country]):
         return [

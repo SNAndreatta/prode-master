@@ -4,6 +4,9 @@
 __pycache__
 *.py[cod]
 
+temp.py
+update_flags.py
+
 # Virtual Environment
 venv/
 env/

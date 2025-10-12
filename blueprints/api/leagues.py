@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from database import get_db  
 from services.leagues_postgres import LeaguePostgres
+from services.country_postgres import CountryPostgres
 from dotenv import load_dotenv
 import os
 
@@ -30,28 +31,31 @@ async def get_leagues(
     db: AsyncSession = Depends(get_db)
 ):
     try:
+        if not country_name:
+            raise HTTPException(status_code=400, detail="Country name is required in querystring.")
+
         leagues_postgres = LeaguePostgres()
+        country_postgres = CountryPostgres()
 
-        if country_name:
-            logger.info(f"Fetching leagues from database for country: {country_name}...")
-            leagues = await leagues_postgres.get_leagues_by_country(db, country_name)
-            logger.info(f"Leagues process completed for {country_name}: obtained={len(leagues)}")
-        else:
-            logger.info("Fetching all leagues from database...")
-            leagues = await leagues_postgres.get_all_leagues(db)
-            logger.info(f"Leagues process completed: obtained={len(leagues)}")
-
+        logger.info(f"Fetching leagues from database for country: {country_name}...")
+        leagues = await leagues_postgres.get_leagues_by_country(db, country_name)
         json_leagues = leagues_postgres.leagues_to_json(leagues)
+        logger.info(f"Leagues process completed for {country_name}: obtained={len(leagues)}")
+        
+        country = await country_postgres.get_country_by_name(db, json_leagues[0]["country"])
 
         return JSONResponse(
-            content={
-                "status": "success",
-                "country": country_name if country_name else "Unknown",
-                "leagues": json_leagues,
-            },
-            status_code=status.HTTP_200_OK,
+        content={
+            "status": "success",
+            "country": country.to_json(),
+            "leagues": json_leagues,
+        },
+        status_code=status.HTTP_200_OK,
         )
 
     except Exception as e:
-        logger.exception(f"Unexpected error fetching leagues: {e}")
-        raise HTTPException(status_code=500, detail="Unexpected error fetching leagues")
+        if isinstance(e, HTTPException):
+            raise e
+        else:
+            logger.exception(f"Unexpected error fetching leagues: {e}")
+            raise HTTPException(status_code=500, detail="Unexpected error fetching leagues")

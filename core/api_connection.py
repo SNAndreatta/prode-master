@@ -99,15 +99,15 @@ class apiFutbolServicio():
         self.__set_querystring('league', str(liga))
         self.__set_querystring('season', str(season))
 
-        self.__set_querystring('from', "2024-06-01")
-        self.__set_querystring('to', "2026-05-31")
+        self.__set_querystring('from', "2025-10-01")
+        self.__set_querystring('to', "2025-10-31")
         self.__set_querystring('timezone', "America/Argentina/Buenos_Aires")
 
         return self.Respuesta
 
     def rounds_from_api(self, liga: int, season: int) -> list[dict]:
         self.__querystring = {}
-        self.__set_url(f"{self.endpoint}/rounds")
+        self.__set_url(f"{self.endpoint}/fixtures/rounds")
         self.__set_querystring('league', str(liga))
         self.__set_querystring('season', str(season))
         self.__set_querystring('current', True)

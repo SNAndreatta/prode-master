@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from models.leagues import League
-
+from services.country_postgres import CountryPostgres
 
 class LeaguePostgres:
     async def add_league(
@@ -79,8 +79,59 @@ class LeaguePostgres:
             for league in leagues
         ]
 
+    async def get_league_by_id(self, db: AsyncSession, id: int):
+        result = await db.execute(select(League).where(League.id == id))
+        return result.scalar_one_or_none()
+
     async def get_leagues_by_country(self, db: AsyncSession, country_name: str):
         result = await db.execute(
             select(League).where(League.country_name == country_name)
         )
         return result.scalars().all()
+
+    async def get_all_leagues_with_country_info(self, db: AsyncSession):
+        """
+        Devuelve todas las ligas con la información completa del país embebida.
+        """
+        result = await db.execute(select(League))
+        leagues = result.scalars().all()
+
+        country_service = CountryPostgres()
+        enriched_leagues = []
+
+        for league in leagues:
+            country = await country_service.get_country_by_name(db, league.country_name)
+            if country:
+                enriched_leagues.append({
+                    "id": league.id,
+                    "name": league.name,
+                    "logo": league.logo,
+                    "season": league.season,
+                    "country": country.to_json()
+                })
+            else:
+                # En caso de que no exista el país (por integridad)
+                enriched_leagues.append({
+                    "id": league.id,
+                    "name": league.name,
+                    "logo": league.logo,
+                    "season": league.season,
+                    "country": {
+                        "name": league.country_name,
+                        "code": None,
+                        "flag": None
+                    }
+                })
+
+        return enriched_leagues
+    
+    async def get_all_countries_with_league(self, db: AsyncSession):
+        country_service = CountryPostgres()
+
+        leagues = await self.get_all_leagues(db)
+        countries = []
+        for league in leagues:
+            country = await country_service.get_country_by_name(db, league.country_name)
+            if country and country not in countries:
+                countries.append(country)
+        return countries

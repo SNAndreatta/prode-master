@@ -54,7 +54,7 @@ async def get_countries(db: AsyncSession = Depends(get_db)):
             flag = country.get("flag", "https://example.com/default-flag.png")
 
             logger.info(f"Adding or updating country: {name} ({code})")
-            await country_postgres.add_or_skip_country(db, name, code, flag)
+            await country_postgres.add_or_update_country(db, name, code, flag)
             added_count += 1
         except Exception as ex:
             failed_count += 1

@@ -38,4 +38,4 @@ class Round(Base):
         }
 
     def __repr__(self):
-        return f"<League {self.name} year {self.season} (from: {self.country_name} // id: {self.id})>"
+        return f"<Round {self.name} year {self.season} (from: {self.league_id} // id: {self.id})>"

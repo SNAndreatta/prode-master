@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from database import get_db  
 from services.country_postgres import CountryPostgres
+from services.leagues_postgres import LeaguePostgres
 from dotenv import load_dotenv
 import os
 
@@ -53,11 +54,12 @@ async def get_countries(db: AsyncSession = Depends(get_db)):
 @countries_router.get("/countries_with_league")
 async def get_countries_with_league(db: AsyncSession = Depends(get_db)):
     try:
+        league_postgres = LeaguePostgres()
         country_postgres = CountryPostgres()
 
         logger.info("Fetching countries with leagues from database...")
 
-        countries = await country_postgres.get_all_countries_with_league(db)
+        countries = await league_postgres.get_all_countries_with_league(db)
 
         logger.info(
             f"Countries process completed: obtained={len(countries)}"

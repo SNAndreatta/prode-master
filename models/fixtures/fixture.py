@@ -59,7 +59,7 @@ class Fixture(Base):
             "league": self.league_id,
             "home": self.home_id,
             "away": self.away_id,
-            "date": self.date,
+            "date": self.date.isoformat(),
             "home_team_score": self.home_team_score,
             "away_team_score": self.away_team_score,
             "home_pens_score": self.home_pens_score,
