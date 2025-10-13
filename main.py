@@ -1,5 +1,6 @@
 import logging
 import sys
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import engine, Base
@@ -19,7 +20,10 @@ from blueprints.api.fixtures import fixtures_router
 """from blueprints.api.teams.router import teams_router"""
 
 from core.api_connection import apiFutbolServicio
-import os
+
+
+# Auth
+from blueprints.auth.auth_routes import auth_router
 
 logging.basicConfig(
     stream=sys.stdout,
@@ -55,6 +59,7 @@ app.add_middleware(
 app.include_router(countries_router)
 app.include_router(leagues_router)
 app.include_router(fixtures_router)
+app.include_router(auth_router)
 
 # FOOTBALL-API
 app.include_router(countries_router_AF)
