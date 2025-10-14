@@ -18,7 +18,7 @@ async def get_fixture():
 
 async def get_fixtures_by_league_and_round():
     print("sibidi")
-    response = await fv.get_fixtures_by_league_and_round(league_id=39, round_name="Regular Season - 38")  # call get_all_data, not add_or_update_fixture
+    response = await fv.get_fixtures_by_league_and_round(league_id=2, round_name="1st Qualifying Round")  # call get_all_data, not add_or_update_fixture
     print("response:", response)
 
 asyncio.run(get_fixtures_by_league_and_round())
