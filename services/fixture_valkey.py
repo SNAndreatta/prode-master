@@ -147,3 +147,48 @@ class FixtureValkey(FixtureService):
             print(f"💥 Error during fixture sync: {str(e)}")
             print("Full traceback:")
             raise
+
+
+    
+    async def get_fixtures_by_league_and_round(self, league_id: int, round_name: str):
+        """Devuelve todos los fixtures de una liga y ronda específica desde Valkey."""
+        print(f"🔍 Getting fixtures for league {league_id}, round {round_name} from Valkey")
+        
+        try:
+            if league_id is None or round_name is None:
+                raise ValueError("league_id and round_name are required")
+            
+            # Get the set of fixture IDs for this league and round
+            league_round_key = self._league_round_key(league_id, round_name)
+            fixture_ids = self.valkey_client.smembers(league_round_key)
+            
+            if not fixture_ids:
+                print(f"⚠️ No fixtures found for league {league_id}, round {round_name}")
+                return []
+            
+            print(f"📊 Found {len(fixture_ids)} fixture IDs for league {league_id}, round {round_name}")
+            
+            # Get all fixture data for these IDs using pipeline for efficiency
+            fixtures = []
+            pipeline = self.valkey_client.pipeline()
+            
+            for fixture_id in fixture_ids:
+                pipeline.get(self._fixture_key(int(fixture_id)))
+            
+            fixture_jsons = pipeline.execute()
+            
+            # Parse JSON data for each fixture
+            for fixture_json in fixture_jsons:
+                if fixture_json:
+                    try:
+                        fixture_data = json.loads(fixture_json)
+                        fixtures.append(fixture_data)
+                    except json.JSONDecodeError as e:
+                        print(f"❌ Failed to parse JSON for fixture: {e}")
+            
+            print(f"✅ Retrieved {len(fixtures)} fixtures for league {league_id}, round {round_name}")
+            return fixtures
+            
+        except Exception as e:
+            print(f"💥 Error getting fixtures by league and round from Valkey: {str(e)}")
+            raise
