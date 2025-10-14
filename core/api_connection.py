@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-secret_key = os.getenv("FOOTBAL_API_KEY")
+secret_key = os.getenv("FOOTBALL_API_KEY")
 
 class apiFutbolServicio():
     def __init__(self, endpoint: str):
@@ -93,14 +93,14 @@ class apiFutbolServicio():
 
         return self.Respuesta
 
-    def fixtures_from_api(self, liga: int, season: int) -> list[dict]:
+    def fixtures_from_api(self, liga: int, season: int, from_d: str, to: str) -> list[dict]:
         self.__querystring = {}
         self.__set_url(f"{self.endpoint}/fixtures")
         self.__set_querystring('league', str(liga))
         self.__set_querystring('season', str(season))
 
-        self.__set_querystring('from', "2025-10-01")
-        self.__set_querystring('to', "2025-10-31")
+        self.__set_querystring('from', from_d)
+        self.__set_querystring('to', to)
         self.__set_querystring('timezone', "America/Argentina/Buenos_Aires")
 
         return self.Respuesta

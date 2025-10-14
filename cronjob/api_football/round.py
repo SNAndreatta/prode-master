@@ -1,34 +1,22 @@
 import logging
-import requests
-from fastapi import APIRouter, HTTPException, status, Depends
-from fastapi.responses import JSONResponse
+from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from database import get_db
 from core.api_connection import apiFutbolServicio
 from services.round_postgres import RoundPostgres
 from services.leagues_postgres import LeaguePostgres
-from dotenv import load_dotenv
-import os
 
-load_dotenv()
+async def get_rounds(api_endpoint: str, db: AsyncSession = Depends(get_db)):
+    logger = logging.getLogger("rounds_AF_logger")
+    logger.setLevel(logging.INFO)
 
-logger = logging.getLogger("rounds_AF_logger")
-logger.setLevel(logging.INFO)
-
-api_endpoint = os.getenv("API_ENDPOINT")
-
-handler = logging.StreamHandler()
-formatter = logging.Formatter(
-    '{"time": "%(asctime)s", "level": "%(levelname)s", "message": "%(message)s"}'
-)
-handler.setFormatter(formatter)
-logger.addHandler(handler)
-
-rounds_router_AF = APIRouter()
-
-
-@rounds_router_AF.get("/api/rounds")
-async def get_rounds(db: AsyncSession = Depends(get_db)):
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter(
+        '{"time": "%(asctime)s", "level": "%(levelname)s", "message": "%(message)s"}'
+    )
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    
     apiFutbol = apiFutbolServicio(endpoint=api_endpoint)
     round_postgres = RoundPostgres()
     league_postgres = LeaguePostgres()
@@ -79,25 +67,12 @@ async def get_rounds(db: AsyncSession = Depends(get_db)):
                         })
                         logger.exception(f"Error adding round {round_name} for league {league.name}: {ex}")
 
-            except requests.HTTPError as e:
-                logger.exception(f"HTTP error fetching rounds for league {league_id}: {e}")
-                continue
             except Exception as e:
                 logger.exception(f"Unexpected error fetching rounds for league {league_id}: {e}")
                 continue
 
         logger.info(f"Rounds process completed: added={added_count}, failed={failed_count}")
-
-        return JSONResponse(
-            content={
-                "status": "success",
-                "rounds_added": added_count,
-                "rounds_failed": failed_count,
-                "failed_rounds": failed_rounds,
-            },
-            status_code=status.HTTP_201_CREATED,
-        )
-
+        
     except Exception as e:
         logger.exception(f"Unexpected error: {e}")
-        raise HTTPException(status_code=500, detail="Unexpected error fetching rounds")
+        raise e
