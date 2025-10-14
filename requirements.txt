@@ -17,3 +17,5 @@ autopep8
 black
 passlib
 bcrypt
+valkey
+valkey[hiredis]
