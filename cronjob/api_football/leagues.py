@@ -42,7 +42,7 @@ async def get_leagues(api_endpoint: str, db: AsyncSession = Depends(get_db)):
         failed_count = 0
         failed_leagues = []
 
-        leagues_ids = [2, 3, 11, 13, 15, 34, 39, 128, 129, 130, 131, 132, 134, 135, 140, 848, 906, 1067]
+        leagues_ids = [2, 3, 11, 13, 15, 34, 39, 128, 129, 130, 135, 140, 848]
 
         for country in countries:
             country_name = country.name

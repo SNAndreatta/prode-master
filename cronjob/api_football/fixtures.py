@@ -22,10 +22,12 @@ async def get_fixtures(api_endpoint: str, db: AsyncSession, arg_timezone, load_l
     league_postgres = LeaguePostgres()
     fixture_postgres = FixturePostgres()
 
-    # Determine date range
     last_run = load_last_run_datetime()
-    start_date = last_run.date().isoformat() if last_run else datetime.now(arg_timezone).date().isoformat()
-    end_date = (datetime.fromisoformat(start_date) + timedelta(days=30)).date().isoformat()
+    now = datetime.now(arg_timezone)
+
+    start_date = last_run.date().isoformat()
+
+    end_date = (now + timedelta(days=30)).date().isoformat()
 
     logger.info(f"Fetching fixtures from {start_date} to {end_date}...")
 

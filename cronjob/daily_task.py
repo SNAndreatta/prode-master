@@ -15,6 +15,6 @@ async def update_database(arg_timezone, load_last_run_datetime, save_last_run_da
     
     # await get_countries(api, db)
     # await get_leagues(api, db)
-    # await get_rounds(api, db)
+    await get_rounds(api, db)
     # await get_teams(api, db)
-    await get_fixtures(api, db, arg_timezone, load_last_run_datetime, save_last_run_datetime)
+    await get_fixtures(api_endpoint=api, db=db, arg_timezone=arg_timezone, load_last_run_datetime=load_last_run_datetime, save_last_run_datetime=save_last_run_datetime) 

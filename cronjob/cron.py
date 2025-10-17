@@ -2,7 +2,7 @@
 
 from fastapi import FastAPI
 import asyncio
-from datetime import datetime, time
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 import json
 import os
@@ -22,7 +22,7 @@ def load_last_run_datetime() -> datetime | None:
             data = json.load(f)
             return datetime.fromisoformat(data["last_run_datetime"])
     except Exception as e:
-        print(f"⚠️ Error leyendo el archivo de estado: {e}")
+        print(f"Error leyendo el archivo de estado: {e}")
         return None
 
 def save_last_run_datetime(run_datetime: datetime):
@@ -30,23 +30,33 @@ def save_last_run_datetime(run_datetime: datetime):
         with open(STATE_FILE, "w") as f:
             json.dump({"last_run_datetime": run_datetime.isoformat()}, f, indent=2)
     except Exception as e:
-        print(f"⚠️ Error guardando el archivo de estado: {e}")
+        print(f"Error guardando el archivo de estado: {e}")
 
 async def daily_scheduler():
     while True:
         now = datetime.now(ARG_TIMEZONE)
-        current_time = now.time()
-        today = now.date()
-
         last_run = load_last_run_datetime()
-        last_run_date = last_run.date() if last_run else None
 
-        if current_time >= time(14, 0) and last_run_date != today:
-            print(f"🔔 Ejecutando tarea programada a las {now.isoformat()}")
-            await update_database(ARG_TIMEZONE, load_last_run_datetime, save_last_run_datetime)
-            save_last_run_datetime(now)
+        if last_run:
+            time_since_last = now - last_run
+            time_remaining = timedelta(hours=24) - time_since_last
+        else:
+            time_remaining = timedelta(seconds=0)
 
-        await asyncio.sleep(60)
+        if not last_run or time_since_last >= timedelta(hours=24):
+            print(f"Ejecutando tarea programada a las {now.isoformat()}")
+            try:
+                await update_database(ARG_TIMEZONE, load_last_run_datetime, save_last_run_datetime)
+                save_last_run_datetime(now)
+                time_remaining = timedelta(hours=24)
+            except Exception as e:
+                print(f"Error al ejecutar tarea programada: {e}")
+                time_remaining = timedelta(minutes=10)
+        else:
+            print(f"Tarea programada en {int(time_remaining.total_seconds())} segundos")
+
+        sleep_seconds = max(time_remaining.total_seconds(), 10)
+        await asyncio.sleep(sleep_seconds)
 
 @app.get("/")
 def read_root():

@@ -11,9 +11,7 @@ from cronjob.cron import daily_scheduler
 from blueprints.api.countries import countries_router
 from blueprints.api.leagues import leagues_router
 from blueprints.api.fixtures import fixtures_router
-"""from blueprints.api.teams.router import teams_router"""
 
-from core.api_connection import apiFutbolServicio
 import os
 
 logging.basicConfig(
@@ -33,7 +31,7 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         print("Tablas creadas exitosamente.")
-        print("⏱️ Iniciando scheduler diario persistente con hora exacta...")
+        print("Intentando iniciar tarea programada")
         asyncio.create_task(daily_scheduler())
     yield
     print("Aplicación cerrada.")
