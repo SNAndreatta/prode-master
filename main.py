@@ -5,19 +5,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import engine, Base
 from contextlib import asynccontextmanager
-
-# FOOTBALL-API
-from blueprints.api_football.countries import countries_router_AF
-from blueprints.api_football.leagues import leagues_router_AF
-from blueprints.api_football.teams import teams_router_AF
-from blueprints.api_football.fixtures import fixtures_router_AF
-from blueprints.api_football.round import rounds_router_AF
+import asyncio
+from cronjob.cron import daily_scheduler
 
 # API
 from blueprints.api.countries import countries_router
 from blueprints.api.leagues import leagues_router
 from blueprints.api.fixtures import fixtures_router
-"""from blueprints.api.teams.router import teams_router"""
 
 from core.api_connection import apiFutbolServicio
 
@@ -42,6 +36,8 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         print("Tablas creadas exitosamente.")
+        print("Intentando iniciar tarea programada")
+        asyncio.create_task(daily_scheduler())
     yield
     print("Aplicación cerrada.")
 

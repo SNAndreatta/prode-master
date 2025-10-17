@@ -1,6 +1,6 @@
 import logging
 import requests
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import Depends
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from database import get_db
@@ -8,28 +8,18 @@ from core.api_connection import apiFutbolServicio
 from services.teams_postgres import TeamPostgres
 from services.country_postgres import CountryPostgres
 from services.leagues_postgres import LeaguePostgres
-from dotenv import load_dotenv
-import os
 
-load_dotenv()
+async def get_teams(api_endpoint: str, db: AsyncSession = Depends(get_db)):
+    logger = logging.getLogger("teams_AF_logger")
+    logger.setLevel(logging.INFO)
 
-logger = logging.getLogger("teams_AF_logger")
-logger.setLevel(logging.INFO)
-
-api_endpoint = os.getenv("API_ENDPOINT")
-
-handler = logging.StreamHandler()
-formatter = logging.Formatter(
-    '{"time": "%(asctime)s", "level": "%(levelname)s", "message": "%(message)s"}'
-)
-handler.setFormatter(formatter)
-logger.addHandler(handler)
-
-teams_router_AF = APIRouter()
-
-
-@teams_router_AF.get("/api/teams")
-async def get_teams(db: AsyncSession = Depends(get_db)):
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter(
+        '{"time": "%(asctime)s", "level": "%(levelname)s", "message": "%(message)s"}'
+    )
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    
     apiFutbol = apiFutbolServicio(endpoint=api_endpoint)
     team_postgres = TeamPostgres()
     league_postgres = LeaguePostgres()
@@ -40,7 +30,7 @@ async def get_teams(db: AsyncSession = Depends(get_db)):
     try:
         leagues = await league_postgres.get_all_leagues(db)
         if not leagues:
-            raise HTTPException(status_code=404, detail="No leagues found in database")
+            raise Exception("No leagues found in database")
 
         logger.info(f"Retrieved {len(leagues)} leagues from the database.")
 
@@ -110,23 +100,6 @@ async def get_teams(db: AsyncSession = Depends(get_db)):
 
         logger.info(f"Teams process completed: added={added_count}, failed={failed_count}")
 
-        return JSONResponse(
-            content={
-                "status": "success",
-                "teams_added": added_count,
-                "teams_failed": failed_count,
-                "failed_teams": failed_teams,
-            },
-            status_code=status.HTTP_201_CREATED,
-        )
-
-    except HTTPException as e:
-        raise e
-
-    except requests.exceptions.RequestException as e:
-        logger.exception(f"External API request failed: {e}")
-        raise HTTPException(status_code=502, detail="Failed to fetch data from external API")
-
     except Exception as e:
         logger.exception(f"Unexpected server error: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error while fetching teams")
+        raise e

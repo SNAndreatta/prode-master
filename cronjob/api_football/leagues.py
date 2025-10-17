@@ -1,35 +1,24 @@
 import logging
-import requests
-from fastapi import APIRouter, HTTPException, status, Depends
-from fastapi.responses import JSONResponse
-from sqlalchemy.ext.asyncio import AsyncSession
-from database import get_db
 from core.api_connection import apiFutbolServicio
 from services.leagues_postgres import LeaguePostgres
 from services.country_postgres import CountryPostgres
-from dotenv import load_dotenv
-import os
+from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import Depends
+from database import get_db
 
-load_dotenv()
-
-logger = logging.getLogger("leagues_AF_logger")
-logger.setLevel(logging.INFO)
-
-api_endpoint = os.getenv("API_ENDPOINT")
-
-handler = logging.StreamHandler()
-formatter = logging.Formatter(
-    '{"time": "%(asctime)s", "level": "%(levelname)s", "message": "%(message)s"}'
-)
-handler.setFormatter(formatter)
-logger.addHandler(handler)
-
-leagues_router_AF = APIRouter()
-
-
-@leagues_router_AF.get("/api/leagues")
-async def get_leagues(db: AsyncSession = Depends(get_db)):
+async def get_leagues(api_endpoint: str, db: AsyncSession = Depends(get_db)):
     apiFutbol = apiFutbolServicio(endpoint=api_endpoint)
+    
+    logger = logging.getLogger("leagues_AF_logger")
+    logger.setLevel(logging.INFO)
+
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter(
+        '{"time": "%(asctime)s", "level": "%(levelname)s", "message": "%(message)s"}'
+    )
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+
     league_postgres = LeaguePostgres()
     country_postgres = CountryPostgres()
 
@@ -53,7 +42,7 @@ async def get_leagues(db: AsyncSession = Depends(get_db)):
         failed_count = 0
         failed_leagues = []
 
-        leagues_ids = [2, 3, 11, 13, 15, 34, 39, 128, 129, 130, 131, 132, 134, 135, 140, 848, 906, 1067]
+        leagues_ids = [2, 3, 11, 13, 15, 34, 39, 128, 129, 130, 135, 140, 848]
 
         for country in countries:
             country_name = country.name
@@ -62,9 +51,6 @@ async def get_leagues(db: AsyncSession = Depends(get_db)):
             try:
                 respuesta = apiFutbol.leagues_from_api(pais=country_name)
                 logger.info(f"Received {len(respuesta)} leagues for country: {country_name}.")
-            except requests.HTTPError as e:
-                logger.exception(f"HTTP error fetching leagues for {country_name}: {e}")
-                continue
             except Exception as e:
                 logger.exception(f"Unexpected error fetching leagues for {country_name}: {e}")
                 continue
@@ -130,16 +116,6 @@ async def get_leagues(db: AsyncSession = Depends(get_db)):
         if failed_leagues:
             logger.warning(f"Failed leagues: {failed_leagues}")
 
-        return JSONResponse(
-            content={
-                "status": "success",
-                "leagues_added": added_count,
-                "leagues_failed": failed_count,
-                "failed_leagues": failed_leagues,
-            },
-            status_code=status.HTTP_201_CREATED,
-        )
-
     except Exception as e:
         logger.exception(f"Unexpected error: {e}")
-        raise HTTPException(status_code=500, detail="Unexpected error fetching leagues")
+        raise e
