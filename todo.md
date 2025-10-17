@@ -1,7 +1,7 @@
 # MEGA TODO
 
-- Sistema de usuarios
-- Sistema de tokens (autenticar mail)
+- Sistema de usuarios HECHO
+- Sistema de tokens HECHO
 - Torneos
 - Predicciones // Prode
 - Leaderboards por torneo y global (endpoint)
