@@ -13,9 +13,6 @@ from blueprints.api.countries import countries_router
 from blueprints.api.leagues import leagues_router
 from blueprints.api.fixtures import fixtures_router
 
-from core.api_connection import apiFutbolServicio
-
-
 # Auth
 from blueprints.auth.auth_routes import auth_router
 
@@ -56,10 +53,3 @@ app.include_router(countries_router)
 app.include_router(leagues_router)
 app.include_router(fixtures_router)
 app.include_router(auth_router)
-
-# FOOTBALL-API
-app.include_router(countries_router_AF)
-app.include_router(leagues_router_AF)
-app.include_router(teams_router_AF)
-app.include_router(fixtures_router_AF)
-app.include_router(rounds_router_AF)
