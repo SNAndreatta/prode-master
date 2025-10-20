@@ -10,6 +10,11 @@ class User(Base):
     username = Column(String, unique=True, nullable=False)  # nuevo campo
     hashed_password = Column(String, nullable=False)
     
+    # Relationships
+    created_tournaments = relationship("Tournament", back_populates="creator")
+    tournament_participations = relationship("TournamentParticipant", back_populates="user")
+    predictions = relationship("Prediction", back_populates="user")
+    
 class Token(Base):
     __tablename__ = "tokens"
     id = Column(Integer, primary_key=True)

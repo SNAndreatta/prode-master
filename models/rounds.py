@@ -1,4 +1,5 @@
 from sqlalchemy import Column, String, ForeignKey, Integer
+from sqlalchemy.orm import relationship
 from database import Base
 class Round(Base):
     """Round ORM class
@@ -17,6 +18,10 @@ class Round(Base):
     name = Column(String(100), nullable=True, unique=False)
     league_id = Column(Integer, ForeignKey("leagues.id"), nullable=False)
     season = Column(Integer, nullable=False)
+
+    # Relationships
+    league = relationship("League")
+    matches = relationship("Match", back_populates="round")
 
     def __init__(self, id: int, name: str, league_id: int, season: int):
         self.id = id

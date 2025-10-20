@@ -12,6 +12,9 @@ from cronjob.cron import daily_scheduler
 from blueprints.api.countries import countries_router
 from blueprints.api.leagues import leagues_router
 from blueprints.api.fixtures import fixtures_router
+from blueprints.api.rounds import rounds_router
+from blueprints.api.tournaments import tournaments_router
+from blueprints.api.predictions import predictions_router
 
 # Auth
 from blueprints.auth.auth_routes import auth_router
@@ -63,4 +66,7 @@ app.add_middleware(
 app.include_router(countries_router)
 app.include_router(leagues_router)
 app.include_router(fixtures_router)
+app.include_router(rounds_router)
+app.include_router(tournaments_router)
+app.include_router(predictions_router)
 app.include_router(auth_router)

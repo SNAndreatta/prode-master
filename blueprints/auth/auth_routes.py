@@ -22,7 +22,7 @@ class UserRead(BaseModel):
     username: str           
     email: EmailStr
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class TokenResponse(BaseModel):
     access_token: str

@@ -1,37 +1,30 @@
-
-from sqlalchemy import Column, String, Text, Integer, ForeignKey
+from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy.orm import relationship
 from database import Base
 
 class Team(Base):
-    """Team ORM class
-
-    Args:
-        id (int): The team's unique identifier.
-        name (str): The team's full name (e.g., "Manchester United").
-        logo (str): URL or path to the team's logo image.
-        country_name (str): The name of the country the team is from (e.g., "England").
-    """
-
     __tablename__ = "teams"
 
-    id = Column(Integer, primary_key=True, nullable=False)
+    id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False)
-    logo = Column(Text, nullable=True)
-    country_name = Column(String(100), ForeignKey("countries.name"), nullable=True)
+    country_id = Column(Integer, ForeignKey("countries.id"), nullable=False)
+    league_id = Column(Integer, ForeignKey("leagues.id"), nullable=False)
+    logo_url = Column(String(500), nullable=True)
 
-    def __init__(self, id: int, name: str, logo: str = None, country_name: str = None):
-        self.id = id
-        self.name = name
-        self.logo = logo
-        self.country_name = country_name
+    # Relationships
+    country = relationship("Country")
+    league = relationship("League")
+    home_matches = relationship("Match", foreign_keys="Match.home_team_id")
+    away_matches = relationship("Match", foreign_keys="Match.away_team_id")
 
     def to_json(self):
         return {
             "id": self.id,
             "name": self.name,
-            "logo": self.logo,
-            "country": self.country_name
+            "country_id": self.country_id,
+            "league_id": self.league_id,
+            "logo_url": self.logo_url,
         }
 
     def __repr__(self):
-        return f"<Team {self.name} (from: {self.country_name} // id: {self.id})>"
+        return f"<Team {self.name} (id: {self.id})>"
