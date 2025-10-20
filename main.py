@@ -30,12 +30,23 @@ api_endpoint = os.getenv("API_ENDPOINT")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Initialize database (this should be fast)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         print("Tablas creadas exitosamente.")
-        print("Intentando iniciar tarea programada")
-        asyncio.create_task(daily_scheduler())
+
+    global background_task
+    background_task = asyncio.create_task(daily_scheduler())
+    print("Tarea programada iniciada en segundo plano")
+    
     yield
+
+    if background_task:
+        background_task.cancel()
+        try:
+            await background_task
+        except asyncio.CancelledError:
+            print("Tarea programada cancelada exitosamente")
     print("Aplicación cerrada.")
 
 app = FastAPI(lifespan=lifespan)

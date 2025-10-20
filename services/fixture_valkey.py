@@ -3,6 +3,8 @@ import logging
 from database import get_db  # your async session provider
 from services.fixture_postgres import FixturePostgres
 from services.fixture_service import FixtureService
+from services.teams_postgres import TeamPostgres
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -147,11 +149,9 @@ class FixtureValkey(FixtureService):
             print(f"💥 Error during fixture sync: {str(e)}")
             print("Full traceback:")
             raise
-
-
     
-    async def get_fixtures_by_league_and_round(self, league_id: int, round_name: str):
-        """Devuelve todos los fixtures de una liga y ronda específica desde Valkey."""
+    async def get_fixtures_by_league_and_round_and_teams(self, league_id: int, round_name: str, db: AsyncSession):
+        """Devuelve todos los fixtures de una liga y ronda específica desde Valkey con información de equipos."""
         print(f"🔍 Getting fixtures for league {league_id}, round {round_name} from Valkey")
         
         try:
@@ -186,9 +186,41 @@ class FixtureValkey(FixtureService):
                     except json.JSONDecodeError as e:
                         print(f"❌ Failed to parse JSON for fixture: {e}")
             
-            print(f"✅ Retrieved {len(fixtures)} fixtures for league {league_id}, round {round_name}")
-            return fixtures
+            # Enrich fixtures with team information
+            enriched_fixtures = await self._enrich_fixtures_with_teams(db, fixtures)
+            
+            print(f"✅ Retrieved {len(enriched_fixtures)} fixtures for league {league_id}, round {round_name}")
+            return enriched_fixtures
             
         except Exception as e:
             print(f"💥 Error getting fixtures by league and round from Valkey: {str(e)}")
             raise
+
+    async def _enrich_fixtures_with_teams(self, db: AsyncSession, fixtures: list) -> list:
+        """Enrich fixtures with home and away team information."""
+        enriched_fixtures = []
+        team_service = TeamPostgres()
+        
+        for fixture in fixtures:
+            try:
+                # Get home team information
+                home_team = await team_service.get_team_with_country_info(db, fixture.get('home_id'))
+                
+                # Get away team information  
+                away_team = await team_service.get_team_with_country_info(db, fixture.get('away_id'))
+                
+                # Create enriched fixture with team information
+                enriched_fixture = {
+                    **fixture,
+                    "home_team": home_team if home_team else self._create_unknown_team(fixture.get('home_id')),
+                    "away_team": away_team if away_team else self._create_unknown_team(fixture.get('away_id'))
+                }
+                
+                enriched_fixtures.append(enriched_fixture)
+                
+            except Exception as e:
+                print(f"❌ Error enriching fixture {fixture.get('id')}: {e}")
+                # Still include the fixture without team info
+                enriched_fixtures.append(fixture)
+        
+        return enriched_fixtures

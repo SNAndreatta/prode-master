@@ -4,10 +4,23 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from database import get_db
+from services.fixture_valkey import FixtureValkey
 from services.fixture_postgres import FixturePostgres
 from services.leagues_postgres import LeaguePostgres
 from services.round_postgres import RoundPostgres
 from models.fixtures.fixture import Fixture
+from dotenv import load_dotenv
+import os
+import valkey
+
+async def get_valkey_client():
+    """Create and return Valkey client using valkey library"""
+    load_dotenv()
+    valkey_uri = os.getenv("VALKEY_URI")
+    if not valkey_uri:
+        raise ValueError("VALKEY_URI not found in environment variables")
+    
+    return valkey.from_url(valkey_uri)
 
 fixtures_router = APIRouter()
 
@@ -32,11 +45,11 @@ async def get_fixtures_by_league_and_round(
     Ejemplo: /fixtures?league_id=39&round_name=Regular Season - 10
     """
     try:
-        fixture_postgres = FixturePostgres()
+        fixture_valkey = FixtureValkey(await get_valkey_client())
         league_postgres = LeaguePostgres()
         round_postgres = RoundPostgres()
 
-        json_fixtures = await fixture_postgres.get_fixtures_by_league_and_round_with_teams(db, league_id, round_name)
+        json_fixtures = await fixture_valkey.get_fixtures_by_league_and_round_and_teams(league_id, round_name, db)
         league = await league_postgres.get_league_by_id(db, league_id)
         round = await round_postgres.get_round_by_name(db, round_name)
 
