@@ -57,6 +57,11 @@ class FixturePostgres:
             await db.close()
             raise Exception(e)
 
+    async def get_all_data(self, db: AsyncSession):
+        """Devuelve todos los fixtures disponibles en la base de datos."""
+        result = await db.execute(select(Fixture))
+        return result.scalars().all()
+
     async def get_fixtures_by_league_and_round(self, db: AsyncSession, league_id: int, round_name: str):
         """Devuelve todos los fixtures de una liga y ronda específica."""
         result = await db.execute(

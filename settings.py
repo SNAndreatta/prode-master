@@ -4,7 +4,7 @@ load_dotenv()
 
 JWT_KEY = os.getenv("JWT_KEY")
 ALGORITHM = os.getenv("ALGORITHM")
-
+VALKEY_URI = os.getenv("VALKEY_URI")
 try:
     
     ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
