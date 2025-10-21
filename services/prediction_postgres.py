@@ -13,6 +13,7 @@ from services.fixture_postgres import FixturePostgres
 from models.fixtures.fixture_status import FixtureStatus
 from datetime import datetime
 from typing import List, Optional, Tuple, Any, cast
+from sqlalchemy.orm import aliased
 
 logger = logging.getLogger("prediction_service")
 logger.setLevel(logging.INFO)
@@ -214,12 +215,16 @@ class PredictionPostgres:
         match_id: Optional[int] = None
     ) -> List[Tuple[Prediction, Fixture, Team, Team, Round, League]]:
         """Get predictions with full match, team, round, and league details"""
-        # Join prediction -> fixture -> teams -> league. We'll filter by round (name) below if needed.
+        # Alias Team for home and away to avoid duplicate table aliasing in SQL
+        HomeTeam = aliased(Team, name="home_team")
+        AwayTeam = aliased(Team, name="away_team")
+
+        # Join prediction -> fixture -> home_team -> away_team -> league -> round
         query = (
-            select(Prediction, Fixture, Team, Team, Round, League)
+            select(Prediction, Fixture, HomeTeam, AwayTeam, Round, League)
             .join(Fixture, cast(Any, Prediction.match_id == Fixture.id))
-            .join(Team, cast(Any, Fixture.home_id == Team.id))
-            .join(Team, cast(Any, Fixture.away_id == Team.id))
+            .join(HomeTeam, cast(Any, Fixture.home_id == HomeTeam.id))
+            .join(AwayTeam, cast(Any, Fixture.away_id == AwayTeam.id))
             .join(League, cast(Any, Fixture.league_id == League.id))
             .join(Round, cast(Any, Round.league_id == League.id))  # join Round via league to keep Round available
             .where(cast(Any, Prediction.user_id == user_id))

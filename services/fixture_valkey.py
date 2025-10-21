@@ -193,8 +193,8 @@ class FixtureValkey(FixtureService):
             return enriched_fixtures
             
         except Exception as e:
-            print(f"💥 Error getting fixtures by league and round from Valkey: {str(e)}")
-            raise
+            await db.rollback()  # reset the failed transaction
+            raise e
 
     async def _enrich_fixtures_with_teams(self, db: AsyncSession, fixtures: list) -> list:
         """Enrich fixtures with home and away team information."""
@@ -212,8 +212,8 @@ class FixtureValkey(FixtureService):
                 # Create enriched fixture with team information
                 enriched_fixture = {
                     **fixture,
-                    "home_team": home_team if home_team else self._create_unknown_team(fixture.get('home_id')),
-                    "away_team": away_team if away_team else self._create_unknown_team(fixture.get('away_id'))
+                    "home_team": home_team,
+                    "away_team": away_team
                 }
                 
                 enriched_fixtures.append(enriched_fixture)

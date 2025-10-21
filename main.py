@@ -26,7 +26,8 @@ logging.basicConfig(
 )
 
 origins = [
-    "http://localhost:5173",  
+    "http://localhost:5173", 
+    "http://localhost:8080" 
 ]
 
 api_endpoint = os.getenv("API_ENDPOINT")

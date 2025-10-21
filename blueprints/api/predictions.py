@@ -150,17 +150,18 @@ async def get_user_predictions(
         # Convert to response format
         predictions = []
         for prediction, match, home_team, away_team, round_obj, league in predictions_data:
+            # Map internal Fixture model fields to API MatchResponse expected fields
             match_response = {
                 "id": match.id,
-                "round_id": match.round_id,
-                "home_team_id": match.home_team_id,
-                "away_team_id": match.away_team_id,
-                "start_time": match.start_time,
-                "finished": match.finished,
-                "result_goals_home": match.result_goals_home,
-                "result_goals_away": match.result_goals_away,
-                "result_penalties_home": match.result_penalties_home,
-                "result_penalties_away": match.result_penalties_away
+                "round_id": match.league_id if hasattr(match, 'league_id') else None,
+                "home_team_id": match.home_id,
+                "away_team_id": match.away_id,
+                "start_time": match.date,
+                "finished": (match.status == None) or (getattr(match, 'status', None) == None) and False or getattr(match, 'status').name == 'FT',
+                "result_goals_home": getattr(match, 'home_team_score', None),
+                "result_goals_away": getattr(match, 'away_team_score', None),
+                "result_penalties_home": getattr(match, 'home_pens_score', None),
+                "result_penalties_away": getattr(match, 'away_pens_score', None)
             }
             
             predictions.append({
@@ -320,17 +321,18 @@ async def get_admin_match_predictions(
         predictions = []
         for prediction, user in predictions_data:
             match = await prediction_service.get_match_by_id(db, match_id)
+            # Map Fixture fields to MatchResponse
             match_response = {
                 "id": match.id,
-                "round_id": match.round_id,
-                "home_team_id": match.home_team_id,
-                "away_team_id": match.away_team_id,
-                "start_time": match.start_time,
-                "finished": match.finished,
-                "result_goals_home": match.result_goals_home,
-                "result_goals_away": match.result_goals_away,
-                "result_penalties_home": match.result_penalties_home,
-                "result_penalties_away": match.result_penalties_away
+                "round_id": match.league_id if hasattr(match, 'league_id') else None,
+                "home_team_id": match.home_id,
+                "away_team_id": match.away_id,
+                "start_time": match.date,
+                "finished": (match.status == None) or (getattr(match, 'status', None) == None) and False or getattr(match, 'status').name == 'FT',
+                "result_goals_home": getattr(match, 'home_team_score', None),
+                "result_goals_away": getattr(match, 'away_team_score', None),
+                "result_penalties_home": getattr(match, 'home_pens_score', None),
+                "result_penalties_away": getattr(match, 'away_pens_score', None)
             }
             
             predictions.append({
