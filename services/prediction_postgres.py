@@ -2,14 +2,17 @@ import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import delete, and_, or_, func
+from sqlalchemy.exc import IntegrityError
 from models.predictions import Prediction
-from models.matches import Match
+from models.fixtures.fixture import Fixture
 from models.auth.auth_models import User
 from models.teams import Team
 from models.rounds import Round
 from models.leagues import League
+from services.fixture_postgres import FixturePostgres
+from models.fixtures.fixture_status import FixtureStatus
 from datetime import datetime
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Any, cast
 
 logger = logging.getLogger("prediction_service")
 logger.setLevel(logging.INFO)
@@ -28,17 +31,18 @@ class PredictionPostgres:
         match_id: int,
         goals_home: int,
         goals_away: int,
-        penalties_home: int = None,
-        penalties_away: int = None
+        penalties_home: Optional[int] = None,
+        penalties_away: Optional[int] = None
     ) -> Prediction:
         """Create a new prediction for a match"""
-        # Check if match exists and is not locked
-        match = await self.get_match_by_id(db, match_id)
-        if not match:
-            raise ValueError(f"Match with id {match_id} not found")
-        
-        if match.is_locked():
-            raise ValueError("Cannot create prediction for a match that has started or finished")
+        # Check if fixture exists and is not locked
+        fixture_service = FixturePostgres()
+        fixture = await fixture_service.get_fixture_by_id(db, match_id)
+        if not fixture:
+            raise ValueError(f"Fixture with id {match_id} not found")
+
+        if fixture_service._is_fixture_locked(fixture):
+            raise ValueError("Cannot create prediction for a fixture that has started or finished")
         
         # Check if prediction already exists
         existing_prediction = await self.get_prediction_by_user_and_match(db, user_id, match_id)
@@ -55,8 +59,18 @@ class PredictionPostgres:
         )
         
         db.add(prediction)
-        await db.commit()
-        await db.refresh(prediction)
+        try:
+            await db.commit()
+            await db.refresh(prediction)
+        except IntegrityError as e:
+            await db.rollback()
+            logger.exception(f"IntegrityError while creating prediction for user {user_id} match {match_id}: {e}")
+            # Likely a foreign key constraint pointing to an old 'matches' table. Surface a clearer error.
+            raise ValueError(
+                "Database integrity error: prediction references a non-existing match. "
+                "This usually means the database foreign key still points to an old 'matches' table. "
+                "Run the migration to update the constraint to reference 'fixtures(id)'."
+            ) from e
         
         logger.info(f"Prediction created for user {user_id} on match {match_id}: {goals_home}-{goals_away}")
         return prediction
@@ -68,17 +82,18 @@ class PredictionPostgres:
         match_id: int,
         goals_home: int,
         goals_away: int,
-        penalties_home: int = None,
-        penalties_away: int = None
+        penalties_home: Optional[int] = None,
+        penalties_away: Optional[int] = None
     ) -> Prediction:
         """Update an existing prediction"""
-        # Check if match exists and is not locked
-        match = await self.get_match_by_id(db, match_id)
-        if not match:
-            raise ValueError(f"Match with id {match_id} not found")
-        
-        if match.is_locked():
-            raise ValueError("Cannot update prediction for a match that has started or finished")
+        # Check if fixture exists and is not locked
+        fixture_service = FixturePostgres()
+        fixture = await fixture_service.get_fixture_by_id(db, match_id)
+        if not fixture:
+            raise ValueError(f"Fixture with id {match_id} not found")
+
+        if fixture_service._is_fixture_locked(fixture):
+            raise ValueError("Cannot update prediction for a fixture that has started or finished")
         
         # Get existing prediction
         prediction = await self.get_prediction_by_user_and_match(db, user_id, match_id)
@@ -86,14 +101,23 @@ class PredictionPostgres:
             raise ValueError("Prediction not found")
         
         # Update prediction
-        prediction.goals_home = goals_home
-        prediction.goals_away = goals_away
-        prediction.penalties_home = penalties_home
-        prediction.penalties_away = penalties_away
-        prediction.updated_at = datetime.utcnow()
-        
-        await db.commit()
-        await db.refresh(prediction)
+        setattr(prediction, 'goals_home', goals_home)
+        setattr(prediction, 'goals_away', goals_away)
+        setattr(prediction, 'penalties_home', penalties_home)
+        setattr(prediction, 'penalties_away', penalties_away)
+        setattr(prediction, 'updated_at', datetime.utcnow())
+
+        try:
+            await db.commit()
+            await db.refresh(prediction)
+        except IntegrityError as e:
+            await db.rollback()
+            logger.exception(f"IntegrityError while updating prediction for user {user_id} match {match_id}: {e}")
+            raise ValueError(
+                "Database integrity error: prediction references a non-existing match. "
+                "This usually means the database foreign key still points to an old 'matches' table. "
+                "Run the migration to update the constraint to reference 'fixtures(id)'."
+            ) from e
         
         logger.info(f"Prediction updated for user {user_id} on match {match_id}: {goals_home}-{goals_away}")
         return prediction
@@ -105,13 +129,14 @@ class PredictionPostgres:
         match_id: int
     ) -> bool:
         """Delete a prediction"""
-        # Check if match exists and is not locked
-        match = await self.get_match_by_id(db, match_id)
-        if not match:
-            raise ValueError(f"Match with id {match_id} not found")
-        
-        if match.is_locked():
-            raise ValueError("Cannot delete prediction for a match that has started or finished")
+        # Check if fixture exists and is not locked
+        fixture_service = FixturePostgres()
+        fixture = await fixture_service.get_fixture_by_id(db, match_id)
+        if not fixture:
+            raise ValueError(f"Fixture with id {match_id} not found")
+
+        if fixture_service._is_fixture_locked(fixture):
+            raise ValueError("Cannot delete prediction for a fixture that has started or finished")
         
         result = await db.execute(
             delete(Prediction).where(
@@ -123,7 +148,8 @@ class PredictionPostgres:
         )
         await db.commit()
         
-        if result.rowcount > 0:
+        rowcount = getattr(result, "rowcount", None)
+        if rowcount and rowcount > 0:
             logger.info(f"Prediction deleted for user {user_id} on match {match_id}")
             return True
         else:
@@ -161,18 +187,23 @@ class PredictionPostgres:
         if match_id:
             query = query.where(Prediction.match_id == match_id)
         elif round_id or league_id:
-            # Join with matches and rounds to filter
-            query = query.join(Match).join(Round)
+            # Join with fixtures and use fixture.round/league to filter
+            query = query.join(Fixture, Prediction.match_id == Fixture.id)
             if round_id:
-                query = query.where(Round.id == round_id)
+                # Resolve round name from Round.id then filter by fixture.round
+                round_obj = await db.scalar(select(Round).where(cast(Any, Round.id == round_id)))
+                if round_obj:
+                    query = query.where(cast(Any, Fixture.round == round_obj.name))
+                else:
+                    return []
             if league_id:
-                query = query.where(Round.league_id == league_id)
+                query = query.where(cast(Any, Fixture.league_id == league_id))
         
         result = await db.execute(query)
         predictions = result.scalars().all()
-        
+
         logger.info(f"Retrieved {len(predictions)} predictions for user {user_id}")
-        return predictions
+        return cast(List[Prediction], list(predictions))
 
     async def get_predictions_with_match_details(
         self,
@@ -181,27 +212,32 @@ class PredictionPostgres:
         round_id: Optional[int] = None,
         league_id: Optional[int] = None,
         match_id: Optional[int] = None
-    ) -> List[Tuple[Prediction, Match, Team, Team, Round, League]]:
+    ) -> List[Tuple[Prediction, Fixture, Team, Team, Round, League]]:
         """Get predictions with full match, team, round, and league details"""
+        # Join prediction -> fixture -> teams -> league. We'll filter by round (name) below if needed.
         query = (
-            select(Prediction, Match, Team, Team, Round, League)
-            .join(Match, Prediction.match_id == Match.id)
-            .join(Team, Match.home_team_id == Team.id)
-            .join(Team, Match.away_team_id == Team.id)
-            .join(Round, Match.round_id == Round.id)
-            .join(League, Round.league_id == League.id)
-            .where(Prediction.user_id == user_id)
+            select(Prediction, Fixture, Team, Team, Round, League)
+            .join(Fixture, cast(Any, Prediction.match_id == Fixture.id))
+            .join(Team, cast(Any, Fixture.home_id == Team.id))
+            .join(Team, cast(Any, Fixture.away_id == Team.id))
+            .join(League, cast(Any, Fixture.league_id == League.id))
+            .join(Round, cast(Any, Round.league_id == League.id))  # join Round via league to keep Round available
+            .where(cast(Any, Prediction.user_id == user_id))
         )
-        
+
         if match_id:
             query = query.where(Prediction.match_id == match_id)
         elif round_id:
-            query = query.where(Round.id == round_id)
+            # Resolve round name and filter by Fixture.round
+            round_obj = await db.scalar(select(Round).where(cast(Any, Round.id == round_id)))
+            if not round_obj:
+                return []
+            query = query.where(cast(Any, Fixture.round == round_obj.name))
         elif league_id:
-            query = query.where(Round.league_id == league_id)
+            query = query.where(cast(Any, Round.league_id == league_id))
         
         result = await db.execute(query)
-        return result.all()
+        return cast(List[Tuple[Prediction, Fixture, Team, Team, Round, League]], result.all())
 
     async def get_match_predictions(
         self,
@@ -213,12 +249,12 @@ class PredictionPostgres:
             select(Prediction).where(Prediction.match_id == match_id)
         )
         predictions = result.scalars().all()
-        
+
         logger.info(f"Retrieved {len(predictions)} predictions for match {match_id}")
-        return predictions
+        return cast(List[Prediction], list(predictions))
 
     async def get_match_predictions_with_users(
-        self,
+        self, 
         db: AsyncSession,
         match_id: int
     ) -> List[Tuple[Prediction, User]]:
@@ -228,12 +264,12 @@ class PredictionPostgres:
             .join(User, Prediction.user_id == User.id)
             .where(Prediction.match_id == match_id)
         )
-        return result.all()
+        return cast(List[Tuple[Prediction, User]], result.all())
 
-    async def get_match_by_id(self, db: AsyncSession, match_id: int) -> Optional[Match]:
-        """Get a match by ID"""
-        result = await db.scalar(select(Match).where(Match.id == match_id))
-        return result
+    async def get_match_by_id(self, db: AsyncSession, match_id: int) -> Optional[Fixture]:
+        """Get a fixture by ID (kept compatibility name)"""
+        fixture_service = FixturePostgres()
+        return await fixture_service.get_fixture_by_id(db, match_id)
 
     async def get_user_prediction_stats(
         self,
@@ -248,17 +284,16 @@ class PredictionPostgres:
         total_predictions = total_result or 0
         
         # Get correct predictions (exact score)
+        # Determine correct predictions by comparing with fixture results
         correct_result = await db.scalar(
             select(func.count(Prediction.id))
-            .join(Match, Prediction.match_id == Match.id)
-            .where(
-                and_(
-                    Prediction.user_id == user_id,
-                    Match.finished == True,
-                    Prediction.goals_home == Match.result_goals_home,
-                    Prediction.goals_away == Match.result_goals_away
-                )
-            )
+            .join(Fixture, cast(Any, Prediction.match_id == Fixture.id))
+            .where(cast(Any, and_(
+                cast(Any, Prediction.user_id == user_id),
+                cast(Any, Fixture.status == FixtureStatus.FT),
+                cast(Any, Prediction.goals_home == Fixture.home_team_score),
+                cast(Any, Prediction.goals_away == Fixture.away_team_score)
+            )))
         )
         correct_predictions = correct_result or 0
         
@@ -289,9 +324,10 @@ class PredictionPostgres:
     ) -> dict:
         """Calculate scores for all predictions of a match"""
         # Get match with results
-        match = await self.get_match_by_id(db, match_id)
-        if not match or not match.finished:
-            raise ValueError("Match not found or not finished")
+        fixture = await self.get_match_by_id(db, match_id)
+        fixture_status = getattr(fixture, 'status', None)
+        if not fixture or fixture_status != FixtureStatus.FT:
+            raise ValueError("Fixture not found or not finished")
         
         # Get all predictions for this match
         predictions = await self.get_match_predictions(db, match_id)
@@ -304,28 +340,39 @@ class PredictionPostgres:
         for prediction in predictions:
             score = 0
             
+            # Extract runtime values to avoid static typing confusion
+            pred_goals_home = getattr(prediction, 'goals_home')
+            pred_goals_away = getattr(prediction, 'goals_away')
+            pred_pens_home = getattr(prediction, 'penalties_home')
+            pred_pens_away = getattr(prediction, 'penalties_away')
+
+            fixture_goals_home = getattr(fixture, 'home_team_score')
+            fixture_goals_away = getattr(fixture, 'away_team_score')
+            fixture_pens_home = getattr(fixture, 'home_pens_score')
+            fixture_pens_away = getattr(fixture, 'away_pens_score')
+
             # Check exact score
-            if (prediction.goals_home == match.result_goals_home and 
-                prediction.goals_away == match.result_goals_away):
+            if (pred_goals_home == fixture_goals_home and 
+                pred_goals_away == fixture_goals_away):
                 score += exact_score_points
                 exact_scores += 1
             else:
                 # Check correct winner
-                prediction_winner = self._get_winner(prediction.goals_home, prediction.goals_away)
-                actual_winner = self._get_winner(match.result_goals_home, match.result_goals_away)
+                prediction_winner = self._get_winner(pred_goals_home, pred_goals_away)
+                actual_winner = self._get_winner(fixture_goals_home, fixture_goals_away)
                 
                 if prediction_winner == actual_winner:
                     score += correct_winner_points
                     correct_winners += 1
             
             # Check penalty bonus
-            if (prediction.penalties_home is not None and 
-                prediction.penalties_away is not None and
-                match.result_penalties_home is not None and
-                match.result_penalties_away is not None):
+            if (pred_pens_home is not None and 
+                pred_pens_away is not None and
+                fixture_pens_home is not None and
+                fixture_pens_away is not None):
                 
-                if (prediction.penalties_home == match.result_penalties_home and
-                    prediction.penalties_away == match.result_penalties_away):
+                if (pred_pens_home == fixture_pens_home and
+                    pred_pens_away == fixture_pens_away):
                     score += penalty_bonus_points
                     penalty_bonuses += 1
             
@@ -364,10 +411,10 @@ class PredictionPostgres:
             .join(User, Prediction.user_id == User.id)
             .join(TournamentParticipant, User.id == TournamentParticipant.user_id)
             .where(
-                and_(
-                    TournamentParticipant.tournament_id == tournament_id,
-                    Prediction.match_id == match_id
-                )
+                cast(Any, and_(
+                    cast(Any, TournamentParticipant.tournament_id == tournament_id),
+                    cast(Any, Prediction.match_id == match_id)
+                ))
             )
         )
-        return result.all()
+        return cast(List[Tuple[Prediction, User]], result.all())

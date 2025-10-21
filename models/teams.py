@@ -14,8 +14,9 @@ class Team(Base):
     # Relationships
     country = relationship("Country")
     league = relationship("League")
-    home_matches = relationship("Match", foreign_keys="Match.home_team_id")
-    away_matches = relationship("Match", foreign_keys="Match.away_team_id")
+    # Fixture relationships (use fixtures table instead of the removed matches model)
+    home_fixtures = relationship("Fixture", primaryjoin="Team.id==Fixture.home_id", foreign_keys="Fixture.home_id")
+    away_fixtures = relationship("Fixture", primaryjoin="Team.id==Fixture.away_id", foreign_keys="Fixture.away_id")
 
     def to_json(self):
         return {

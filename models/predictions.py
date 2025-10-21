@@ -2,13 +2,14 @@ from sqlalchemy import Column, Integer, ForeignKey, DateTime, UniqueConstraint
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
+from models.fixtures.fixture import Fixture
 
 class Prediction(Base):
     __tablename__ = "predictions"
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    match_id = Column(Integer, ForeignKey("matches.id", ondelete="CASCADE"), nullable=False)
+    match_id = Column(Integer, ForeignKey("fixtures.id", ondelete="CASCADE"), nullable=False)
     goals_home = Column(Integer, nullable=False)
     goals_away = Column(Integer, nullable=False)
     penalties_home = Column(Integer, nullable=True)
@@ -18,7 +19,7 @@ class Prediction(Base):
 
     # Relationships
     user = relationship("User", back_populates="predictions")
-    match = relationship("Match", back_populates="predictions")
+    match = relationship("Fixture")
 
     # Ensure unique prediction per user per match
     __table_args__ = (

@@ -21,7 +21,6 @@ class Round(Base):
 
     # Relationships
     league = relationship("League")
-    matches = relationship("Match", back_populates="round")
 
     def __init__(self, id: int, name: str, league_id: int, season: int):
         self.id = id
