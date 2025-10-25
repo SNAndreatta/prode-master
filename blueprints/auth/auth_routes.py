@@ -69,8 +69,8 @@ async def login(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenciales inválidas")
 
     # Crear tokens
-    access_token = create_access_token({"sub": str(user.id)})
-    refresh_token = create_refresh_token({"sub": str(user.id)})
+    access_token = create_access_token({"user_id": user.id, "username": user.username})
+    refresh_token = create_refresh_token({ "user_id": user.id, "username": user.username})
 
     # Guardar refresh token en la base con User-Agent
     token_entry = Token(

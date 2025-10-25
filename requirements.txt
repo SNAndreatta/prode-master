@@ -16,3 +16,4 @@ passlib
 bcrypt
 valkey
 valkey[hiredis]
+requests

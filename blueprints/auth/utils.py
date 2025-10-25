@@ -36,7 +36,7 @@ async def get_current_user(
         
         # Decode JWT token
         payload = decode_jwt(token)
-        user_id = int(payload.get("sub"))
+        user_id = int(payload.get("user_id"))
         
         # Get user from database
         result = await db.execute(select(User).where(User.id == user_id))
@@ -75,7 +75,7 @@ async def get_optional_current_user(
             return None
         token = authorization.split(" ")[1]
         payload = decode_jwt(token)
-        user_id = int(payload.get("sub"))
+        user_id = int(payload.get("user_id"))
         user = await db.scalar(select(User).where(User.id == user_id))
         return user
     except Exception:
