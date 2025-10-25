@@ -23,6 +23,10 @@ from schemas.tournament_schemas import (
     TournamentInviteResponse,
     TournamentVisibilityResponse
 )
+from schemas.tournament_schemas import TournamentLeaderboardEntry
+
+from services.prediction_postgres import PredictionPostgres
+from models.fixtures.fixture_status import FixtureStatus
 
 # Request model for partial updates
 class TournamentUpdate(BaseModel):
@@ -644,3 +648,90 @@ async def invite_user_to_tournament(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Unexpected error inviting user to tournament"
         )
+
+
+@tournaments_router.get("/tournaments/{tournament_id}/leaderboard", response_model=List[TournamentLeaderboardEntry])
+async def get_tournament_leaderboard(
+    tournament_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user)
+):
+    """
+    Get leaderboard for a tournament (ranked by total points).
+    Public endpoint for public tournaments. Private tournaments require membership.
+    """
+    try:
+        tournament_service = TournamentPostgres()
+        participation_service = TournamentParticipationPostgres()
+        prediction_service = PredictionPostgres()
+
+        tournament = await tournament_service.get_tournament_by_id(db, tournament_id)
+        if not tournament:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Tournament with id {tournament_id} not found")
+
+        # Privacy checks: mirror participants endpoint
+        if not getattr(tournament, 'is_public', True):
+            if not current_user:
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required for private tournament leaderboard")
+            # Allow creator
+            if tournament.creator_id != current_user.id:
+                is_participant = await participation_service.is_participant(db, tournament_id, current_user.id)
+                if not is_participant:
+                    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied: you are not a participant in this private tournament")
+
+        # Get participants
+        participants = await participation_service.get_tournament_participants(db, tournament_id)
+
+        leaderboard = []
+        # For each participant, gather prediction stats for this tournament's league
+        for participation in participants:
+            user = participation.user
+            # get predictions with match details filtered by league
+            preds_with_details = await prediction_service.get_predictions_with_match_details(db, user.id, league_id=getattr(tournament, 'league_id', None))
+
+            total_points = 0
+            total_preds = 0
+            correct_preds = 0
+
+            for pred, fixture, *_rest in preds_with_details:
+                # Only consider finished fixtures for correctness
+                if getattr(fixture, 'status', None) != FixtureStatus.FT:
+                    # Still count prediction, but points may be None until calculated
+                    pass
+                pts = getattr(pred, 'points', None)
+                total_points += 0 if pts is None else int(pts)
+                total_preds += 1
+
+                # Correct prediction if exact score matches fixture final score
+                if getattr(fixture, 'home_team_score', None) is not None and getattr(fixture, 'away_team_score', None) is not None:
+                    if getattr(pred, 'goals_home', None) == getattr(fixture, 'home_team_score') and getattr(pred, 'goals_away', None) == getattr(fixture, 'away_team_score'):
+                        correct_preds += 1
+
+            leaderboard.append({
+                'username': user.username,
+                'points': total_points,
+                'correct_predictions': correct_preds,
+                'total_predictions': total_preds
+            })
+
+        # Sort by points desc, then by correct_predictions desc
+        leaderboard.sort(key=lambda x: (x['points'], x['correct_predictions']), reverse=True)
+
+        # Attach rank
+        response = []
+        for idx, row in enumerate(leaderboard, start=1):
+            response.append(TournamentLeaderboardEntry(
+                rank=idx,
+                username=row['username'],
+                points=row['points'],
+                correct_predictions=row['correct_predictions'],
+                total_predictions=row['total_predictions']
+            ))
+
+        return response
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Unexpected error fetching tournament leaderboard: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unexpected error fetching tournament leaderboard")

@@ -44,3 +44,14 @@ class TournamentVisibilityResponse(BaseModel):
     message: str
     tournament_id: int
     is_public: bool
+
+
+class TournamentLeaderboardEntry(BaseModel):
+    rank: int
+    username: str
+    points: int
+    correct_predictions: int
+    total_predictions: int
+
+    class Config:
+        orm_mode = True

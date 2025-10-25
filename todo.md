@@ -23,9 +23,9 @@
 <!-- - make service to calculate all of that -->
 
 --- Frontend ---
-- update fixtures displays to also show the new attribute points in the prediction, if prediction doesn't exists and the match has already finished, show '-' in the prediction display and 0 points, otherwise, use api info
-- create a new page in tournaments where you can access your tournaments, and also make tournaments accesible by ID as there is a is_public argument, so to access private tournaments
+-✅~~~~~~ update fixtures displays to also show the new attribute points in the prediction, if prediction doesn't exists and the match has already finished, show '-' in the prediction display and 0 points, otherwise, use api info
+-✅~~~~~~ create a new page in tournaments where you can access your tournaments, and also make tournaments accesible by ID as there is a is_public argument, so to access private tournaments
 - when you click on one of the tournaments you are part of it should redirect you to a page with info of the tournament, in this case just the leaderboard
 - using new points system, create a leaderboard component to be able to show how many points each member of a tournament has
 - make admin of tournament in my tournaments section be able to configure the tournament settings, he can modify tournament's name, description and privacy, this can be done through a config button inside of the my tournaments button for each of the configurable tournaments of the user
-- in the navbar, next to the username, show his total points attribute
+<!-- - in the navbar, next to the username, show his total points attribute -->
