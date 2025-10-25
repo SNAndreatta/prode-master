@@ -14,12 +14,11 @@
 -✅ logic to not be able to update or create predictions after fixture has already started (use match date, not status, as it can be outdated due to only updating database once a day with the daily_task cronjob)
 -✅ make endpoints for updating all of 1 tournament info
 -✅ make so that users that are not part of the tournament not able to access any of the endpoints that are not related to explictly joining it
-- make endpoint get tournaments where user is joined, not necessarily the user has to have created it, replace the endpoint of /tournaments/my
-
+-✅ make endpoint get tournaments where user is joined, not necessarily the user has to have created it, replace the endpoint of /tournaments/my
 - modify auth/jwt utils to have methods for get_current_user, get_optional_current_user (can return None), and update EVERY ENDPOINT THAT REQUIRES THIS to use those methods for getting the user. An example of how to do this is already in tournaments.py in blueprints/api
 
-- try to make a migration system or add information on how to do it on migration.md
-- integrate that migration system on main.py
+<!-- - try to make a migration system or add information on how to do it on migration.md -->
+<!-- - integrate that migration system on main.py -->
 <!-- - update users to have global points that sum every league points (update model) -->
 <!-- - make service to calculate all of that -->
 

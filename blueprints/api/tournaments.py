@@ -8,7 +8,7 @@ from services.tournament_postgres import TournamentPostgres
 from services.tournament_participation_postgres import TournamentParticipationPostgres
 from services.leagues_postgres import LeaguePostgres
 from models.auth.auth_models import User
-from blueprints.auth.jwt_handler import decode_jwt
+from blueprints.auth.utils import get_current_user, get_optional_current_user
 from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
@@ -52,70 +52,6 @@ class TournamentResponse(BaseModel):
 
     class Config:
         from_attributes = True
-
-# Dependency to get current user from JWT token
-async def get_current_user(
-    authorization: str = Header(..., description="Bearer token"),
-    db: AsyncSession = Depends(get_db)
-) -> User:
-    """Extract and validate user from JWT token"""
-    try:
-        # Extract token from "Bearer <token>" format
-        if not authorization.startswith("Bearer "):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid authorization header format"
-            )
-        
-        token = authorization.split(" ")[1]
-        
-        # Decode JWT token
-        payload = decode_jwt(token)
-        user_id = int(payload.get("sub"))
-        
-        # Get user from database
-        result = await db.execute(select(User).where(User.id == user_id))
-        user = result.scalar_one_or_none()
-        
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="User not found"
-            )
-        
-        return user
-        
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid token: {str(e)}"
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials"
-        )
-
-async def get_optional_current_user(
-    authorization: Optional[str] = Header(None, description="Optional Bearer token"),
-    db: AsyncSession = Depends(get_db)
-) -> Optional[User]:
-    """Attempt to extract and validate a user from the Authorization header.
-
-    Returns None when no header is provided or when token is invalid.
-    """
-    if not authorization:
-        return None
-    try:
-        if not authorization.startswith("Bearer "):
-            return None
-        token = authorization.split(" ")[1]
-        payload = decode_jwt(token)
-        user_id = int(payload.get("sub"))
-        user = await db.scalar(select(User).where(User.id == user_id))
-        return user
-    except Exception:
-        return None
 
 # Router setup
 tournaments_router = APIRouter()

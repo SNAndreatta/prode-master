@@ -5,7 +5,7 @@ from sqlalchemy import select
 from database import get_db
 from services.prediction_postgres import PredictionPostgres
 from models.auth.auth_models import User
-from blueprints.auth.jwt_handler import decode_jwt
+from blueprints.auth.utils import get_current_user, get_optional_current_user
 from schemas.prediction_schemas import (
     PredictionCreate,
     PredictionUpdate,
@@ -30,33 +30,6 @@ formatter = logging.Formatter(
 )
 handler.setFormatter(formatter)
 logger.addHandler(handler)
-
-# Dependency to get current user from JWT token
-async def get_current_user(
-    authorization: str = Header(..., description="Bearer token"),
-    db: AsyncSession = Depends(get_db)
-) -> User:
-    """Extract and validate user from JWT token"""
-    try:
-        # Extract token from "Bearer <token>" format
-        if not authorization.startswith("Bearer "):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid authentication scheme. Must be 'Bearer'."
-            )
-        token = authorization.split(" ")[1]
-        payload = decode_jwt(token)
-        user_id = int(payload.get("sub"))
-        user = await db.scalar(select(User).where(User.id == user_id))
-        if not user:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
-        return user
-    except ValueError as e:
-        logger.error(f"JWT decoding error: {e}")
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
-    except Exception as e:
-        logger.exception(f"Unexpected error in get_current_user: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Authentication error")
 
 @predictions_router.post("/predictions", response_model=PredictionResponse)
 async def create_or_update_prediction(
