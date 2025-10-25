@@ -392,6 +392,67 @@ class PredictionPostgres:
             "penalty_bonuses": penalty_bonuses
         }
 
+    async def calculate_and_persist_match_scores(
+        self,
+        db: AsyncSession,
+        match_id: int,
+        penalty_bonus_points: int = 3
+    ) -> dict:
+        """Calculate points for each prediction on a match and persist them.
+
+        This method sets Prediction.points for each prediction and commits the
+        updates. It uses the same scoring rules as PredictionPointsService
+        (exact=3, winner=1, wrong=0) and adds penalty bonus on top.
+        """
+        # Get match with results
+        fixture = await self.get_match_by_id(db, match_id)
+        fixture_status = getattr(fixture, 'status', None)
+        if not fixture or fixture_status != FixtureStatus.FT:
+            raise ValueError("Fixture not found or not finished")
+
+        predictions = await self.get_match_predictions(db, match_id)
+
+        scoring_service = PredictionPointsService(exact_points=3, correct_winner_points=1)
+
+        updated = 0
+        for prediction in predictions:
+            pred_goals_home = getattr(prediction, 'goals_home')
+            pred_goals_away = getattr(prediction, 'goals_away')
+            pred_pens_home = getattr(prediction, 'penalties_home')
+            pred_pens_away = getattr(prediction, 'penalties_away')
+
+            fixture_goals_home = getattr(fixture, 'home_team_score')
+            fixture_goals_away = getattr(fixture, 'away_team_score')
+            fixture_pens_home = getattr(fixture, 'home_pens_score')
+            fixture_pens_away = getattr(fixture, 'away_pens_score')
+
+            pts, _reason = scoring_service.score_prediction(
+                pred_goals_home, pred_goals_away, fixture_goals_home, fixture_goals_away
+            )
+
+            # Penalty bonus
+            if (pred_pens_home is not None and pred_pens_away is not None and
+                fixture_pens_home is not None and fixture_pens_away is not None):
+                if (pred_pens_home == fixture_pens_home and pred_pens_away == fixture_pens_away):
+                    pts += penalty_bonus_points
+
+            # Persist
+            prediction.points = pts
+            prediction.updated_at = datetime.utcnow()
+            updated += 1
+
+        try:
+            await db.commit()
+        except Exception:
+            await db.rollback()
+            raise
+
+        return {
+            "match_id": match_id,
+            "total_predictions": len(predictions),
+            "scores_calculated": updated
+        }
+
     def _get_winner(self, goals_home: int, goals_away: int) -> str:
         """Determine winner based on goals"""
         if goals_home > goals_away:

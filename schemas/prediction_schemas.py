@@ -29,6 +29,7 @@ class PredictionResponse(BaseModel):
     match_id: int
     goals_home: int
     goals_away: int
+    points: Optional[int]
     penalties_home: Optional[int]
     penalties_away: Optional[int]
     created_at: datetime
@@ -43,6 +44,7 @@ class PredictionWithMatch(BaseModel):
     match_id: int
     goals_home: int
     goals_away: int
+    points: Optional[int]
     penalties_home: Optional[int]
     penalties_away: Optional[int]
     created_at: datetime
@@ -89,6 +91,7 @@ class AdminPredictionResponse(BaseModel):
     match_id: int
     goals_home: int
     goals_away: int
+    points: Optional[int]
     penalties_home: Optional[int]
     penalties_away: Optional[int]
     created_at: datetime

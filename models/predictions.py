@@ -14,6 +14,8 @@ class Prediction(Base):
     goals_away = Column(Integer, nullable=False)
     penalties_home = Column(Integer, nullable=True)
     penalties_away = Column(Integer, nullable=True)
+    # Points awarded for this prediction (nullable until calculated)
+    points = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
@@ -33,6 +35,7 @@ class Prediction(Base):
             "match_id": self.match_id,
             "goals_home": self.goals_home,
             "goals_away": self.goals_away,
+            "points": self.points,
             "penalties_home": self.penalties_home,
             "penalties_away": self.penalties_away,
             "created_at": self.created_at.isoformat(),
@@ -40,4 +43,4 @@ class Prediction(Base):
         }
 
     def __repr__(self):
-        return f"<Prediction user_id={self.user_id}, match_id={self.match_id}, score={self.goals_home}-{self.goals_away}>"
+        return f"<Prediction user_id={self.user_id}, match_id={self.match_id}, score={self.goals_home}-{self.goals_away}, points={self.points}>"
