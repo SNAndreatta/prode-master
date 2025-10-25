@@ -33,7 +33,6 @@ class TournamentUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     description: Optional[str] = Field(None, max_length=500)
     is_public: Optional[bool] = None
-    max_participants: Optional[int] = Field(None, ge=2, le=1000)
 
 # Pydantic models for request/response
 class TournamentCreate(BaseModel):
