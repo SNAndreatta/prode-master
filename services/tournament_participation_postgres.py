@@ -148,6 +148,23 @@ class TournamentParticipationPostgres:
         )
         return result
 
+    async def get_user_tournaments(
+        self,
+        db: AsyncSession,
+        user_id: int
+    ) -> list[Tournament]:
+        """Get all tournaments where user is a participant"""
+        result = await db.execute(
+            select(Tournament)
+            .join(TournamentParticipant, Tournament.id == TournamentParticipant.tournament_id)
+            .where(TournamentParticipant.user_id == user_id)
+            .order_by(Tournament.created_at.desc())
+        )
+        
+        tournaments = list(result.scalars().all())
+        logger.info(f"Retrieved {len(tournaments)} tournaments for participant {user_id}")
+        return tournaments
+
     async def delete_tournament(
         self,
         db: AsyncSession,

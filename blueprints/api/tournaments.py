@@ -96,7 +96,6 @@ async def get_current_user(
             detail="Could not validate credentials"
         )
 
-
 async def get_optional_current_user(
     authorization: Optional[str] = Header(None, description="Optional Bearer token"),
     db: AsyncSession = Depends(get_db)
@@ -224,13 +223,13 @@ async def get_my_tournaments(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Get all tournaments created by the current user.
+    Get all tournaments where the current user is a participant.
     Requires authentication.
     """
     try:
-        tournament_service = TournamentPostgres()
+        participation_service = TournamentParticipationPostgres()
         
-        tournaments = await tournament_service.get_tournaments_by_creator(db, current_user.id)
+        tournaments = await participation_service.get_user_tournaments(db, current_user.id)
         logger.info(f"Retrieved {len(tournaments)} tournaments for user {current_user.username}")
         
         return tournaments
