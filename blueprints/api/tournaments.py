@@ -109,12 +109,14 @@ async def create_tournament(
     """
     Create a new tournament.
     Requires authentication.
+    The creator automatically joins the tournament as a participant.
     """
     try:
         logger.info(f"Creating tournament: {tournament_data.name} for user {current_user.id}")
         
         tournament_service = TournamentPostgres()
         league_service = LeaguePostgres()
+        participation_service = TournamentParticipationPostgres()
         
         # Verify that the league exists
         league = await league_service.get_league_by_id(db, tournament_data.league_id)
@@ -140,6 +142,17 @@ async def create_tournament(
         
         logger.info(f"Tournament created successfully: {tournament.name} by user {current_user.username}")
         
+        # Automatically join the creator to the tournament
+        try:
+            await participation_service.join_tournament(
+                db=db,
+                tournament_id=tournament.id,
+                user_id=current_user.id
+            )
+            logger.info(f"Creator {current_user.id} automatically joined tournament {tournament.id}")
+        except ValueError as e:
+            logger.warning(f"Creator {current_user.id} could not auto-join tournament {tournament.id}: {e}")
+        
         return tournament
         
     except HTTPException:
@@ -156,6 +169,7 @@ async def create_tournament(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Unexpected error creating tournament"
         )
+
 
 @tournaments_router.get("/tournaments/my", response_model=List[TournamentResponse])
 async def get_my_tournaments(
