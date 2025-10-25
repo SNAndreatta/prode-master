@@ -14,6 +14,7 @@ from models.fixtures.fixture_status import FixtureStatus
 from datetime import datetime
 from typing import List, Optional, Tuple, Any, cast
 from sqlalchemy.orm import aliased
+from services.prediction_points import PredictionPointsService
 
 logger = logging.getLogger("prediction_service")
 logger.setLevel(logging.INFO)
@@ -323,8 +324,6 @@ class PredictionPostgres:
         self,
         db: AsyncSession,
         match_id: int,
-        exact_score_points: int = 10,
-        correct_winner_points: int = 5,
         penalty_bonus_points: int = 3
     ) -> dict:
         """Calculate scores for all predictions of a match"""
@@ -337,14 +336,17 @@ class PredictionPostgres:
         # Get all predictions for this match
         predictions = await self.get_match_predictions(db, match_id)
         
+        # Use the dedicated scoring service. Default points passed in kept for
+        # backward compatibility but the simple service below implements the
+        # requested scoring: exact=3, correct winner=1, wrong=0.
+        scoring_service = PredictionPointsService(exact_points=3, correct_winner_points=1)
+
         scores_calculated = 0
         exact_scores = 0
         correct_winners = 0
         penalty_bonuses = 0
-        
+
         for prediction in predictions:
-            score = 0
-            
             # Extract runtime values to avoid static typing confusion
             pred_goals_home = getattr(prediction, 'goals_home')
             pred_goals_away = getattr(prediction, 'goals_away')
@@ -356,31 +358,28 @@ class PredictionPostgres:
             fixture_pens_home = getattr(fixture, 'home_pens_score')
             fixture_pens_away = getattr(fixture, 'away_pens_score')
 
-            # Check exact score
-            if (pred_goals_home == fixture_goals_home and 
-                pred_goals_away == fixture_goals_away):
-                score += exact_score_points
+            # Score using the new service
+            pts, reason = scoring_service.score_prediction(
+                pred_goals_home, pred_goals_away, fixture_goals_home, fixture_goals_away
+            )
+
+            if reason == 'exact':
                 exact_scores += 1
-            else:
-                # Check correct winner
-                prediction_winner = self._get_winner(pred_goals_home, pred_goals_away)
-                actual_winner = self._get_winner(fixture_goals_home, fixture_goals_away)
-                
-                if prediction_winner == actual_winner:
-                    score += correct_winner_points
-                    correct_winners += 1
-            
-            # Check penalty bonus
+            elif reason == 'winner':
+                correct_winners += 1
+
+            score = pts
+
+            # Penalty bonus remains: add on top of regular points
             if (pred_pens_home is not None and 
                 pred_pens_away is not None and
                 fixture_pens_home is not None and
                 fixture_pens_away is not None):
-                
                 if (pred_pens_home == fixture_pens_home and
                     pred_pens_away == fixture_pens_away):
                     score += penalty_bonus_points
                     penalty_bonuses += 1
-            
+
             scores_calculated += 1
             logger.info(f"User {prediction.user_id} scored {score} points for match {match_id}")
         
