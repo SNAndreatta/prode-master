@@ -123,6 +123,22 @@ class FixturePostgres:
 
         return False
 
+    def is_fixture_started_by_date(self, fixture: Fixture) -> bool:
+        """Return True if the fixture's scheduled date/time is in the past (started).
+
+        This method intentionally ignores `status` because status values may be
+        stale if the fixtures are updated only periodically. Use this when you
+        need a conservative lock based solely on the scheduled start time.
+        """
+        date = getattr(fixture, 'date')
+        if not date:
+            return False
+        try:
+            # Compare in UTC naive to UTC naive
+            return datetime.utcnow() >= date.replace(tzinfo=None)
+        except Exception:
+            return False
+
     async def get_fixtures_by_league_and_round(self, db: AsyncSession, league_id: int, round_name: str):
         """Devuelve todos los fixtures de una liga y ronda específica."""
         result = await db.execute(

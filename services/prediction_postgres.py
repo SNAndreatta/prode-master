@@ -43,8 +43,9 @@ class PredictionPostgres:
         if not fixture:
             raise ValueError(f"Fixture with id {match_id} not found")
 
-        if fixture_service._is_fixture_locked(fixture):
-            raise ValueError("Cannot create prediction for a fixture that has started or finished")
+        # Block creation if fixture has already started based on scheduled date
+        if fixture_service.is_fixture_started_by_date(fixture):
+            raise ValueError("Cannot create prediction for a fixture that has already started")
         
         # Check if prediction already exists
         existing_prediction = await self.get_prediction_by_user_and_match(db, user_id, match_id)
@@ -94,8 +95,9 @@ class PredictionPostgres:
         if not fixture:
             raise ValueError(f"Fixture with id {match_id} not found")
 
-        if fixture_service._is_fixture_locked(fixture):
-            raise ValueError("Cannot update prediction for a fixture that has started or finished")
+        # Block updates if fixture has already started based on scheduled date
+        if fixture_service.is_fixture_started_by_date(fixture):
+            raise ValueError("Cannot update prediction for a fixture that has already started")
         
         # Get existing prediction
         prediction = await self.get_prediction_by_user_and_match(db, user_id, match_id)
@@ -137,8 +139,9 @@ class PredictionPostgres:
         if not fixture:
             raise ValueError(f"Fixture with id {match_id} not found")
 
-        if fixture_service._is_fixture_locked(fixture):
-            raise ValueError("Cannot delete prediction for a fixture that has started or finished")
+        # Block deletes if fixture has already started based on scheduled date
+        if fixture_service.is_fixture_started_by_date(fixture):
+            raise ValueError("Cannot delete prediction for a fixture that has already started")
         
         result = await db.execute(
             delete(Prediction).where(
