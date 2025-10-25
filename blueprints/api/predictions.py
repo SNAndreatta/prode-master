@@ -122,7 +122,7 @@ async def get_user_predictions(
         
         # Convert to response format
         predictions = []
-        for prediction, match, home_team, away_team, round_obj, league in predictions_data:
+        for prediction, match in predictions_data:
             # Map internal Fixture model fields to API MatchResponse expected fields
             match_response = {
                 "id": match.id,

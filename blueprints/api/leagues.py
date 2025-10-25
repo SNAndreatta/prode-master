@@ -59,3 +59,47 @@ async def get_leagues(
         else:
             logger.exception(f"Unexpected error fetching leagues: {e}")
             raise HTTPException(status_code=500, detail="Unexpected error fetching leagues")
+
+@leagues_router.get("/leagues/{league_id}")
+async def get_league_by_id(
+    league_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get a league by its ID.
+    Returns detailed information about the league.
+    """
+    try:
+        leagues_postgres = LeaguePostgres()
+
+        logger.info(f"Fetching league from database for ID: {league_id}...")
+        league = await leagues_postgres.get_league_by_id(db, league_id)
+
+        if not league:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"League with ID {league_id} not found."
+            )
+
+        league_json = league.to_json() if hasattr(league, "to_json") else {
+            "id": league.id,
+            "name": league.name,
+            "country": league.country,
+            "season": league.season,
+        }
+
+        logger.info(f"League fetched successfully: {league_json.get('name', 'unknown')}")
+
+        return JSONResponse(
+            content={
+                "status": "success",
+                "league": league_json,
+            },
+            status_code=status.HTTP_200_OK,
+        )
+
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.exception(f"Unexpected error fetching league by ID {league_id}: {e}")
+        raise HTTPException(status_code=500, detail="Unexpected error fetching league")
