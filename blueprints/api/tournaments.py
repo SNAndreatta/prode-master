@@ -24,6 +24,13 @@ from schemas.tournament_schemas import (
     TournamentVisibilityResponse
 )
 
+# Request model for partial updates
+class TournamentUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    description: Optional[str] = Field(None, max_length=500)
+    is_public: Optional[bool] = None
+    max_participants: Optional[int] = Field(None, ge=2, le=1000)
+
 # Pydantic models for request/response
 class TournamentCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=100, description="Tournament name")
@@ -88,6 +95,28 @@ async def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials"
         )
+
+
+async def get_optional_current_user(
+    authorization: Optional[str] = Header(None, description="Optional Bearer token"),
+    db: AsyncSession = Depends(get_db)
+) -> Optional[User]:
+    """Attempt to extract and validate a user from the Authorization header.
+
+    Returns None when no header is provided or when token is invalid.
+    """
+    if not authorization:
+        return None
+    try:
+        if not authorization.startswith("Bearer "):
+            return None
+        token = authorization.split(" ")[1]
+        payload = decode_jwt(token)
+        user_id = int(payload.get("sub"))
+        user = await db.scalar(select(User).where(User.id == user_id))
+        return user
+    except Exception:
+        return None
 
 # Router setup
 tournaments_router = APIRouter()
@@ -223,15 +252,35 @@ async def get_tournament_by_id(
     """
     try:
         tournament_service = TournamentPostgres()
-        
+        participation_service = TournamentParticipationPostgres()
+
         tournament = await tournament_service.get_tournament_by_id(db, tournament_id)
         if not tournament:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Tournament with id {tournament_id} not found"
             )
-        
-        logger.info(f"Retrieved tournament: {tournament.name} (id: {tournament_id})")
+
+        # If tournament is public, return without auth
+        if getattr(tournament, 'is_public', True):
+            logger.info(f"Retrieved public tournament: {tournament.name} (id: {tournament_id})")
+            return tournament
+
+        # Private tournament: require authentication and membership
+        current_user = await get_optional_current_user(db=db)
+        if not current_user:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required for private tournament")
+
+        # Allow if creator
+        if tournament.creator_id == current_user.id:
+            logger.info(f"Retrieved private tournament: {tournament.name} (id: {tournament_id}) for creator {current_user.username}")
+            return tournament
+
+        is_participant = await participation_service.is_participant(db, tournament_id, current_user.id)
+        if not is_participant:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied: you are not a participant in this private tournament")
+
+        logger.info(f"Retrieved private tournament: {tournament.name} (id: {tournament_id}) for user {current_user.username}")
         return tournament
         
     except HTTPException:
@@ -304,6 +353,35 @@ async def join_tournament(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Unexpected error joining tournament"
         )
+
+
+@tournaments_router.patch("/tournaments/{tournament_id}", response_model=TournamentResponse)
+async def update_tournament(
+    tournament_id: int,
+    update_data: TournamentUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Update tournament information (only creator can update)."""
+    try:
+        tournament_service = TournamentPostgres()
+
+        updated = await tournament_service.update_tournament(
+            db=db,
+            tournament_id=tournament_id,
+            creator_id=current_user.id,
+            **update_data.dict(exclude_unset=True)
+        )
+
+        return updated
+    except HTTPException:
+        raise
+    except ValueError as e:
+        logger.error(f"Value error updating tournament: {e}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        logger.exception(f"Unexpected error updating tournament: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unexpected error updating tournament")
 
 @tournaments_router.delete("/tournaments/{tournament_id}/leave", response_model=TournamentLeaveResponse)
 async def leave_tournament(
@@ -497,7 +575,8 @@ async def remove_participant(
 @tournaments_router.get("/tournaments/{tournament_id}/participants", response_model=List[ParticipantOut])
 async def get_tournament_participants(
     tournament_id: int,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user)
 ):
     """
     Get all participants of a tournament.
@@ -508,7 +587,7 @@ async def get_tournament_participants(
         
         participation_service = TournamentParticipationPostgres()
         tournament_service = TournamentPostgres()
-        
+
         # Check if tournament exists
         tournament = await tournament_service.get_tournament_by_id(db, tournament_id)
         if not tournament:
@@ -517,7 +596,15 @@ async def get_tournament_participants(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Tournament with id {tournament_id} not found"
             )
-        
+
+        # If private tournament, require current_user membership
+        if not getattr(tournament, 'is_public', True):
+            if not current_user:
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required for private tournament participants list")
+            is_participant = await participation_service.is_participant(db, tournament_id, current_user.id)
+            if not is_participant and tournament.creator_id != current_user.id:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied: you are not a participant in this private tournament")
+
         # Get participants
         participants = await participation_service.get_tournament_participants(db, tournament_id)
         
@@ -621,69 +708,4 @@ async def invite_user_to_tournament(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Unexpected error inviting user to tournament"
-        )
-
-@tournaments_router.patch("/tournaments/{tournament_id}/visibility", response_model=TournamentVisibilityResponse)
-async def change_tournament_visibility(
-    tournament_id: int,
-    visibility_data: TournamentVisibilityRequest,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
-):
-    """
-    Change tournament visibility (public/private).
-    Only the tournament creator can change visibility.
-    Requires authentication.
-    """
-    try:
-        logger.info(f"User {current_user.id} attempting to change visibility of tournament {tournament_id} to {visibility_data.is_public}")
-        
-        participation_service = TournamentParticipationPostgres()
-        tournament_service = TournamentPostgres()
-        
-        # Check if tournament exists
-        tournament = await tournament_service.get_tournament_by_id(db, tournament_id)
-        if not tournament:
-            logger.error(f"Tournament {tournament_id} not found")
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Tournament with id {tournament_id} not found"
-            )
-        
-        # Check if user is the creator
-        if tournament.creator_id != current_user.id:
-            logger.warning(f"User {current_user.id} is not the creator of tournament {tournament_id}")
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only the tournament creator can change visibility"
-            )
-        
-        # Update visibility
-        updated_tournament = await participation_service.update_tournament_visibility(
-            db, tournament_id, visibility_data.is_public
-        )
-        
-        if not updated_tournament:
-            logger.error(f"Failed to update visibility for tournament {tournament_id}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to update tournament visibility"
-            )
-        
-        visibility_text = "public" if visibility_data.is_public else "private"
-        logger.info(f"Tournament {tournament.name} visibility changed to {visibility_text} by creator {current_user.username}")
-        
-        return TournamentVisibilityResponse(
-            message=f"Tournament visibility changed to {visibility_text}",
-            tournament_id=tournament_id,
-            is_public=visibility_data.is_public
-        )
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.exception(f"Unexpected error changing tournament visibility: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Unexpected error changing tournament visibility"
         )

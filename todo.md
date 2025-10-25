@@ -11,10 +11,10 @@
 --- Backend ---
 -✅ service to calculate users points on each prediction
 -✅ modify prediction model to also use attribute points on the prediction, which can be nullable and update predictions services accordingly update daily_task to also calculate new points value for each prediction
-
-- logic to not be able to update or create predictions after fixture has already started (use match date, not status, as it can be outdated due to only updating database once a day with the daily_task cronjob)
-- make endpoints for updating all of 1 tournament info
-- make so that users that are not part of the tournament not able to access any of the endpoints that are not related to explictly joining it
+-✅ logic to not be able to update or create predictions after fixture has already started (use match date, not status, as it can be outdated due to only updating database once a day with the daily_task cronjob)
+-✅ make endpoints for updating all of 1 tournament info
+-✅ make so that users that are not part of the tournament not able to access any of the endpoints that are not related to explictly joining it
+- make endpoint get tournaments where user is joines, replace the endpoint of /tournaments/my
 - try to make a migration system or add information on how to do it on migration.md
 - integrate that migration system on main.py
 <!-- - update users to have global points that sum every league points (update model) -->
