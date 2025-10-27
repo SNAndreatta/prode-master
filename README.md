@@ -1,12 +1,10 @@
 # Prode Master
 
 ## Stack
-- Node.js
-- TypeScript
-- Express
-- Prisma ORM
-- SQLite
-- fluentd (para los logs)
+- python
+- FastAPI
+- SQLAlchemy
+- Valkey (base de datos en memoria)
 - API-Football
 
 ## Requisitos
