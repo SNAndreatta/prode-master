@@ -15,6 +15,9 @@
 
 ## Ejecución del servidor backend
 
+### Variables de entorno
+Configurar las variables de entorno como se muestra en el template del .env
+
 ### Entorno
 ```bash
 python -m venv env
