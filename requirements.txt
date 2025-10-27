@@ -17,3 +17,7 @@ bcrypt
 valkey
 valkey[hiredis]
 requests
+pytest 
+pytest-asyncio 
+sqlalchemy[asyncio] 
+aiosqlite 
