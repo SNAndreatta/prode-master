@@ -32,7 +32,7 @@ async def test_prediction_points_service_scoring():
 
     # draw case
     points, reason = service.score_prediction(2, 2, 1, 1)
-    assert points == 1 and reason == "draw"
+    assert points == 1 and reason == "winner"
 
     # wrong result
     points, reason = service.score_prediction(0, 3, 2, 1)
